@@ -308,7 +308,7 @@ Les arguments de la commande sont complexes, ils sont donc données ci dessous
 <summary><em>Réponse</em></summary><br>
 
 ```BASH
-docker run --name mysql -e MYSQL_USER=etu -e MYSQL_PASSWORD=etuPassword -e MYSQL_DATABASE=univ -e MYSQL_ROOT_PASSWORD=toor -v mysql:/var/lib/mysql/ -d mysql
+docker run --name mysql -e MYSQL_USER=etu -e MYSQL_PASSWORD=etuPassword -e MYSQL_DATABASE=univ -e MYSQL_ROOT_PASSWORD=toor -v mysql:/var/lib/mysql/ -d mysql:8.0.36
 docker exec -it mysql /bin/bash
 mysql --password=etuPassword --user=etu
 USE univ;
