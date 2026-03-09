@@ -29,7 +29,7 @@ Si vous choisissez d'utiliser une instance Openstack `Docker Ready` voici la
 configuration que vous devrez faire / avoir.
 
 Vous devez en tout premier générer votre keypair ssh (public et private key)
-puis mettre votre clé publique sur l'Openstack afin qu'elle sois mise sur
+puis mettre votre clé publique sur l'Openstack afin qu'elle soit mise sur
 votre instance lors de sa création.
 
 #### **Génération clé ssh (~10min)**
@@ -52,7 +52,7 @@ ssh-keygen -q -b 4096 -t rsa -N "" -f ~/.ssh/id_rsa
 ---
 
 Vous pouvez ensuite aller dans l'Openstack à la section `Paires de clés`,
-cliquer `Importer une paires de clés`.
+cliquer `Importer une paire de clés`.
 Vous nommerez la clé `tp_docker_keypair` et mettrez le résultat de la commande
 suivante dans le cadre `clé publique`.
 
@@ -114,13 +114,13 @@ nc -vz 192.168.X.X 22
 
 </details><br>
 
-Une fois la connexion ssh établie vous pouvez tester que le `Docker deamon` est
+Une fois la connexion ssh établie vous pouvez tester que le `Docker daemon` est
 bien présent et en fonctionnement.
 
 <details>
 <summary><em>Réponse</em></summary><br>
 
-Vous pouvez récupérer l'état et les informations liées au `Docker deamon`
+Vous pouvez récupérer l'état et les informations liées au `Docker daemon`
 avec la commande suivante.
 
 ```BASH
@@ -129,7 +129,7 @@ docker version
 
 ---
 
-Il est aussi possible de regarder l'état du `deamon` avec son service `systemd`.
+Il est aussi possible de regarder l'état du `daemon` avec son service `systemd`.
 
 ```BASH
 systemctl status docker
@@ -171,6 +171,14 @@ la `Docker cli` pour démarrer et utiliser des conteneurs.
 
 ### **1 / Mon premier conteneur (~20min)**
 
+Pour référencer vos conteneurs plus facilement dans les commandes suivantes,
+utilisez le flag `--name` de `docker run`. Sans ce flag, Docker génère un nom
+aléatoire.
+
+Le flag `--rm` permet de supprimer automatiquement un conteneur dès qu'il
+s'arrête. Pratique pour les conteneurs temporaires afin de ne pas avoir à
+les supprimer manuellement.
+
 1.1 / Démarrer votre premier conteneur (non détaché) avec une image `nginx`
 
 > [Docker run](https://docs.docker.com/engine/reference/commandline/run/)
@@ -189,7 +197,7 @@ terminal car le conteneur y est attaché, pour en sortir, utilisez `CTRL+C`
 1.4 / Pourquoi voyons nous notre conteneur en sortie de la commande à la
 question `1.3` mais pas dans celle de la question `1.2` ?
 
-1.5 / Supprimez le conteneur que vous avez précédemment crée
+1.5 / Supprimez le conteneur que vous avez précédemment créé
 
 > [Docker rm](https://docs.docker.com/engine/reference/commandline/rm/)
 
@@ -205,7 +213,7 @@ sans avoir à stoper le conteneur.
 
 1.7 / Relancez la commande de la question `1.2`, quelle est la différence ?
 
-1.8 / Stoppez le conteneur que vous avez précédemment crée
+1.8 / Stoppez le conteneur que vous avez précédemment créé
 
 > [Docker stop](https://docs.docker.com/engine/reference/commandline/stop/)
 
@@ -216,35 +224,52 @@ sans avoir à stoper le conteneur.
 2.1 / Démarrez un conteneur détaché avec une image `nginx` sur le
 tag `alpine`
 
-2.2 / Affichez la liste des conteneurs qui tournent sur votre instance
+2.2 / Affichez les images Docker présentes sur votre instance
 
-2.3 / Quelle est la différence avec le conteneur démarré à la question `1.5` ?
+> [Docker images](https://docs.docker.com/engine/reference/commandline/images/)
+
+2.3 / Affichez la liste des conteneurs qui tournent sur votre instance
+
+2.4 / Quelle est la différence de taille entre les deux images `nginx` ?
+Qu'est-ce que cela implique pour le choix d'un tag ?
 
 ### **3 / Les logs (~10min)**
 
 Lorsque vous démarrez un conteneur il génère des logs.
 Ces logs sont importants pour le monitoring de votre application et son debug.
 
+Pour que les logs soient plus intéressants, générez d'abord une requête HTTP
+vers nginx depuis l'intérieur du conteneur avant de les afficher :
+
+```BASH
+docker exec [nom_du_conteneur] curl -s localhost
+```
+
 3.1 / Affichez les logs du conteneur démarré à la `2.1`
 
 > [Docker logs](https://docs.docker.com/engine/reference/commandline/logs/)
 
+> Astuce : utilisez le flag `-f` pour suivre les logs en temps réel (`docker logs -f`)
+
+⚠️ Avant de passer à cette section, supprimez les conteneurs démarrés dans
+les sections précédentes.
+
 ### **4 / Exécuter dans un conteneur (~20min)**
 
 Pour des raisons de debug il peut être nécessaire d'ouvrir un terminal
-dans un conteneur, c'est pour cela que la commande `exec` a été crée.
+dans un conteneur, c'est pour cela que la commande `exec` a été créée.
 
 4.1 / Démarrez un conteneur avec une image `ubuntu` en détaché
 
 4.2 / Affichez la liste des conteneurs en fonctionnement sur votre instance
 
 ⚠️ Vous remarquez que le conteneur que vous venez de lancer n'est pas présent.
-Par défaut, un conteneur nécessite toujours un programme en cours
-et il s'arrête à l'arrêt de ce programme, dans notre cas, l'image ubuntu
-ne contient pas de tels programmes, le conteneur s'arrête donc directement après
-son lancement.
+Docker exécute un processus principal appelé `PID 1` et arrête le conteneur
+dès que ce processus se termine. L'image `ubuntu` n'ayant aucun processus
+à garder en vie par défaut, le conteneur s'arrête immédiatement après son
+lancement.
 Vous pouvez contourner cette limitation en lançant un programme de votre choix
-en programme initial de votre conteneur.
+en processus initial de votre conteneur.
 
 4.3 / Démarrez un conteneur avec une image `ubuntu` en détaché en utilisant la
 commande `sleep infinity` comme programme au démarrage
@@ -263,13 +288,26 @@ commande `sleep infinity` comme programme au démarrage
 
 4.7 / Faites le ménage et stoppez / supprimez tous les conteneurs présents
 
+> Astuce : `docker rm -f` arrête et supprime un conteneur en une seule commande.
+> Pour supprimer tous les conteneurs stoppés en une fois : `docker container prune`
+
 ### **5 / Exposer des ports (~15min)**
 
 Pour accéder à votre serveur web que vous lancez dans un conteneur il
 vous faut exposer les ports du conteneur.
 
+Le flag `-p` de `docker run` permet de lier un port de la machine hôte à un
+port du conteneur, selon la syntaxe suivante :
+
+```
+-p [PORT_HOTE]:[PORT_CONTENEUR]
+```
+
+Par exemple `-p 8080:80` rend le port `80` du conteneur accessible sur le
+port `8080` de la machine hôte.
+
 L'image docker `nginx:latest` fait tourner par défaut le serveur web `nginx` sur
-le port 80 dans le conteneur.
+le port `80` dans le conteneur.
 
 ⚠️ Pour la suite de ce TP il vous faut ajouter une règle pour autoriser l'accès au port
 `8080` sur le firewall openstack, seul un groupe dans le projet à besoin d'effectuer cette
@@ -288,6 +326,9 @@ disponible sur `localhost:8080`
 5.3 / Testez depuis votre machine locale avec `curl`, si le serveur web est
 disponible sur `192.168.X.X:8080`
 
+⚠️ Avant de passer à cette section, supprimez les conteneurs démarrés dans
+la section précédente.
+
 ### **6 / Les volumes (~30min)**
 
 Les conteneurs docker doivent être considérés comme volatiles. La donnée que vous
@@ -299,10 +340,10 @@ des `volumes` et des `mount`.
 
 > [Docker volumes](https://docs.docker.com/engine/reference/commandline/volume/)
 
-6.2 / Lancez un conteneur `mysql` détaché en montant le volume précedemment
-crée dans `var/lib/mysql/`
+6.2 / Lancez un conteneur `mysql` détaché en montant le volume précédemment
+créé dans `/var/lib/mysql/`
 
-Les arguments de la commande sont complexes, ils sont donc données ci dessous
+Les arguments de la commande sont complexes, ils sont donc donnés ci-dessous
 
 <details>
 <summary><em>Réponse</em></summary><br>
@@ -340,40 +381,44 @@ SELECT * from students;
 Nous pouvons voir que la donnée a bien été conservée malgré la suppression
 du conteneur.
 
-Les volumes sont importants même si nous n'allons pas supprimer un conteneur,
-il arrive que docker supprime les données hors volumes des conteneurs qui
-sont stoppés.
+Les volumes sont importants car les données présentes dans un conteneur sont
+définitivement perdues à sa suppression (`docker rm`). Le simple arrêt d'un
+conteneur (`docker stop`) ne supprime pas les données, mais si le conteneur
+est ensuite supprimé sans volume, elles le seront aussi.
 
 ## **Créer une image Docker (~30min)**
 
 Nous allons dans cette partie voir la conception d'un `Dockerfile` et le
 `build` d'une image docker.
 
-7.1 / Depuis le répertoire dockerfile créez une image docker avec comme
+> [Dockerfile reference](https://docs.docker.com/engine/reference/builder/)
+
+7.1 / Lisez le `Dockerfile` présent dans le répertoire `dockerfile/` et
+expliquez chaque ligne
+
+7.2 / Depuis le répertoire `dockerfile/` créez une image docker avec comme
 tag `myapp`
 
 > [Docker build](https://docs.docker.com/engine/reference/commandline/build/)
 
-7.2 / Démarrez l'image précédemment crée en n'oubliant pas d'exposer les bons
+7.3 / Démarrez l'image précédemment créée en n'oubliant pas d'exposer les bons
 ports
 
 ⚠️ N'oubliez pas de lire la configuration du serveur web nginx !
 
-7.3 / Testez depuis votre machine locale avec votre navigateur que la page web
+7.4 / Testez depuis votre machine locale avec votre navigateur que la page web
 est bien là.
 
-7.4 / Modifiez la page web `index.html` pour qu'elle affiche `image.jpeg`
+7.5 / Modifiez la page web `index.html` pour qu'elle affiche `image.jpeg`
 
-⚠️ Vous devrez aussi modifier le `Dockerfile`
+⚠️ Vous devrez aussi modifier le `Dockerfile` pour y ajouter une instruction
+`COPY` afin de copier `image.jpeg` dans le répertoire de travail du conteneur,
+de la même façon que `index.html`
 
-> [Dockerfile](https://docs.docker.com/engine/reference/builder/)
-
-7.5 / Créez une seconde image docker `myapp-image` et démarrez la afin que la
+7.6 / Créez une seconde image docker `myapp-image` et démarrez la afin que la
 page web avec l'image soient accessibles depuis votre machine locale.
 
 ⚠️ N'oubliez pas de stopper l'ancien conteneur
-
-7.6 / Expliquez ligne par ligne le contenu du dockerfile
 
 ## **Docker compose (~60min)**
 

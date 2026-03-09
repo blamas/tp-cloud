@@ -1,0 +1,1898 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Introduction à Docker — CM2 Cloud S2</title>
+
+<!-- JetBrains Mono — the only font we need for this terminal aesthetic -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,300;0,400;0,500;0,700;1,400&display=swap" rel="stylesheet">
+
+<style>
+/* ===========================================
+   CSS CUSTOM PROPERTIES — TERMINAL GREEN THEME
+   Change :root values to retheme the entire deck
+   =========================================== */
+:root {
+    /* Colors */
+    --bg:           #0d1117;
+    --bg-2:         #161b22;
+    --bg-3:         #21262d;
+    --border:       #30363d;
+    --text:         #e6edf3;
+    --text-muted:   #7d8590;
+    --text-dim:     #484f58;
+    --green:        #39d353;
+    --green-dim:    #238636;
+    --green-bg:     rgba(57,211,83,.08);
+    --green-glow:   rgba(57,211,83,.2);
+    --blue:         #58a6ff;
+    --orange:       #f0883e;
+    --red:          #ff7b72;
+    --purple:       #bc8cff;
+
+    /* Typography — all clamp() */
+    --font: 'JetBrains Mono', monospace;
+    --title-size:  clamp(2.5rem, 6vw, 6rem);
+    --h2-size:     clamp(1.5rem, 3vw, 3rem);
+    --h3-size:     clamp(1.2rem, 2.5vw, 2.2rem);
+    --body-size:   clamp(1.1rem, 2vw, 2.2rem);
+    --small-size:  clamp(1rem, 1.7vw, 1.9rem);
+    --code-size:   clamp(0.95rem, 1.6vw, 1.7rem);
+
+    /* Spacing */
+    --slide-padding: clamp(1.5rem, 4vw, 4rem);
+    --gap:           clamp(0.6rem, 1.8vw, 2rem);
+    --gap-sm:        clamp(0.4rem, 1vw, 1rem);
+
+    /* Animation */
+    --ease: cubic-bezier(0.16, 1, 0.3, 1);
+    --dur: 0.6s;
+}
+
+/* ===========================================
+   RESET
+   =========================================== */
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+/* ===========================================
+   VIEWPORT BASE — MANDATORY (from viewport-base.css)
+   =========================================== */
+html, body { height: 100%; overflow-x: hidden; }
+html {
+    scroll-snap-type: y mandatory;
+    scroll-behavior: smooth;
+}
+.slide {
+    width: 100vw;
+    height: 100vh;
+    height: 100dvh;
+    overflow: hidden;
+    scroll-snap-align: start;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+}
+.slide-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    max-height: 100%;
+    overflow: hidden;
+    padding: var(--slide-padding);
+}
+.card, .container, .content-box {
+    max-width: min(90vw, 1000px);
+    max-height: min(80vh, 700px);
+}
+.feature-list, .bullet-list { gap: clamp(0.4rem, 1vh, 1rem); }
+.feature-list li, .bullet-list li { font-size: var(--body-size); line-height: 1.4; }
+.grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr));
+    gap: clamp(0.5rem, 1.5vw, 1rem);
+}
+img, .image-container { max-width: 100%; max-height: min(50vh, 400px); object-fit: contain; }
+
+/* Short viewports */
+@media (max-height: 700px) {
+    :root { --slide-padding: clamp(0.75rem, 3vw, 2rem); --gap: clamp(0.4rem, 1.2vw, 1rem); --h2-size: clamp(1.4rem, 3vw, 2.5rem); }
+}
+@media (max-height: 600px) {
+    :root { --slide-padding: clamp(0.5rem, 2.5vw, 1.5rem); --title-size: clamp(2rem, 5vw, 4rem); }
+    .nav-dots, .keyboard-hint { display: none; }
+}
+@media (max-height: 500px) {
+    :root { --slide-padding: clamp(0.4rem, 2vw, 1rem); --title-size: clamp(1.6rem, 4vw, 3rem); }
+}
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.2s !important; }
+    html { scroll-behavior: auto; }
+}
+
+/* ===========================================
+   GLOBAL STYLES
+   =========================================== */
+body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font);
+    font-size: var(--body-size);
+}
+
+/* Scan lines overlay — subtle CRT feel on every slide */
+body::after {
+    content: '';
+    position: fixed; inset: 0; pointer-events: none; z-index: 9000;
+    background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255,255,255,.012) 2px, rgba(255,255,255,.012) 4px);
+}
+
+/* Grid background — tight dot matrix */
+.slide::before {
+    content: '';
+    position: absolute; inset: 0; pointer-events: none;
+    background-image:
+        linear-gradient(var(--border) 1px, transparent 1px),
+        linear-gradient(90deg, var(--border) 1px, transparent 1px);
+    background-size: clamp(30px, 4vw, 52px) clamp(30px, 4vw, 52px);
+    opacity: .18;
+}
+
+/* ===========================================
+   TERMINAL HEADER BAR (reusable)
+   =========================================== */
+.term-bar {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: clamp(28px, 4vh, 40px);
+    background: var(--bg-2);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    padding: 0 clamp(0.75rem, 2vw, 1.5rem);
+    gap: clamp(5px, 0.7vw, 8px);
+    z-index: 10;
+    flex-shrink: 0;
+}
+.term-dot { width: clamp(7px,1vw,11px); height: clamp(7px,1vw,11px); border-radius: 50%; }
+.td-r { background: #ff5f57; }
+.td-y { background: #ffbd2e; }
+.td-g { background: #28c840; }
+.term-title {
+    flex: 1; text-align: center;
+    font-size: var(--small-size); color: var(--text-dim); letter-spacing: .04em;
+}
+.term-slide-num {
+    font-size: var(--small-size); color: var(--text-dim);
+}
+
+/* ===========================================
+   REVEAL ANIMATIONS (JS adds .visible class)
+   =========================================== */
+.reveal {
+    opacity: 0;
+    transform: translateY(20px);
+    transition: opacity var(--dur) var(--ease), transform var(--dur) var(--ease);
+}
+.slide.visible .reveal { opacity: 1; transform: translateY(0); }
+.slide.visible .reveal:nth-child(1) { transition-delay: .05s; }
+.slide.visible .reveal:nth-child(2) { transition-delay: .15s; }
+.slide.visible .reveal:nth-child(3) { transition-delay: .25s; }
+.slide.visible .reveal:nth-child(4) { transition-delay: .35s; }
+.slide.visible .reveal:nth-child(5) { transition-delay: .45s; }
+.slide.visible .reveal:nth-child(6) { transition-delay: .55s; }
+
+.reveal-left {
+    opacity: 0; transform: translateX(-20px);
+    transition: opacity var(--dur) var(--ease), transform var(--dur) var(--ease);
+}
+.slide.visible .reveal-left { opacity: 1; transform: translateX(0); }
+.slide.visible .reveal-left:nth-child(1) { transition-delay: .05s; }
+.slide.visible .reveal-left:nth-child(2) { transition-delay: .15s; }
+.slide.visible .reveal-left:nth-child(3) { transition-delay: .25s; }
+.slide.visible .reveal-left:nth-child(4) { transition-delay: .35s; }
+.slide.visible .reveal-left:nth-child(5) { transition-delay: .45s; }
+.slide.visible .reveal-left:nth-child(6) { transition-delay: .55s; }
+
+/* ===========================================
+   COMMON UI ELEMENTS
+   =========================================== */
+
+/* Section heading */
+.slide-heading {
+    font-size: var(--h2-size);
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: var(--gap);
+    line-height: 1.1;
+}
+.slide-heading .prompt-mark {
+    color: var(--green);
+    margin-right: clamp(4px,.5vw,8px);
+}
+.slide-heading .comment {
+    color: var(--text-muted);
+    font-weight: 400;
+    font-style: italic;
+    font-size: var(--small-size);
+    display: block;
+    margin-bottom: clamp(3px,.4vh,5px);
+}
+
+/* Code block */
+.code-block {
+    background: var(--bg-2);
+    border: 1px solid var(--border);
+    border-radius: clamp(4px,.5vw,8px);
+    padding: clamp(.6rem,1.5vh,1.5rem) clamp(.8rem,1.5vw,1.5rem);
+    font-size: var(--code-size);
+    line-height: 1.7;
+    overflow: hidden;
+    max-height: 65vh;
+}
+.code-block .ln { color: var(--text-dim); margin-right: clamp(8px,1.5vw,20px); user-select: none; }
+.kw  { color: var(--purple); }
+.str { color: var(--orange); }
+.cmt { color: var(--text-muted); font-style: italic; }
+.cmd { color: var(--green); }
+.arg { color: var(--blue); }
+.flag{ color: var(--orange); }
+.val { color: var(--orange); }
+
+/* Badge / tag */
+.badge {
+    display: inline-block;
+    background: var(--green-bg);
+    border: 1px solid var(--green-dim);
+    color: var(--green);
+    font-size: var(--small-size);
+    padding: clamp(2px,.4vh,5px) clamp(8px,1vw,14px);
+    border-radius: 100px;
+    letter-spacing: .06em;
+}
+
+/* Inline code */
+code {
+    background: var(--bg-2);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 1px clamp(3px,.4vw,6px);
+    font-size: .9em;
+    color: var(--orange);
+}
+
+/* Architecture box */
+.arch-box {
+    background: var(--bg-2);
+    border: 1px solid var(--border);
+    border-radius: clamp(4px,.4vw,6px);
+    padding: clamp(5px,1vh,10px) clamp(8px,1vw,14px);
+    text-align: center;
+    font-size: var(--small-size);
+    font-weight: 500;
+    transition: border-color .2s;
+}
+.arch-box.green  { border-color: var(--green-dim); color: var(--green); background: var(--green-bg); }
+.arch-box.blue   { border-color: #1f6feb; color: var(--blue); background: rgba(88,166,255,.08); }
+.arch-box.orange { border-color: #9e6a03; color: var(--orange); background: rgba(240,136,62,.08); }
+.arch-box.purple { border-color: #6e40c9; color: var(--purple); background: rgba(188,140,255,.08); }
+.arch-box.red    { border-color: #da3633; color: var(--red); background: rgba(255,123,114,.08); }
+
+/* Separator */
+.sep {
+    width: 100%; height: 1px;
+    background: linear-gradient(to right, transparent, var(--border), transparent);
+    margin: var(--gap-sm) 0;
+}
+
+/* ===========================================
+   PROGRESS BAR
+   =========================================== */
+.progress-bar {
+    position: fixed;
+    top: 0; left: 0;
+    height: 2px;
+    background: var(--green);
+    width: 0%;
+    z-index: 9999;
+    transition: width .3s ease;
+    box-shadow: 0 0 8px var(--green-glow);
+}
+
+/* ===========================================
+   NAV DOTS
+   =========================================== */
+.nav-dots {
+    position: fixed;
+    right: clamp(.75rem,1.5vw,1.5rem);
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    flex-direction: column;
+    gap: clamp(5px,.8vh,10px);
+    z-index: 9998;
+}
+.nav-dot {
+    width: clamp(5px,.6vw,7px);
+    height: clamp(5px,.6vw,7px);
+    border-radius: 50%;
+    background: var(--border);
+    cursor: pointer;
+    transition: background .2s, transform .2s, box-shadow .2s;
+    border: none;
+    padding: 0;
+}
+.nav-dot.active {
+    background: var(--green);
+    transform: scale(1.4);
+    box-shadow: 0 0 6px var(--green-glow);
+}
+.nav-dot:hover { background: var(--text-muted); }
+
+/* ===========================================
+   KEYBOARD HINT
+   =========================================== */
+.keyboard-hint {
+    position: fixed;
+    bottom: clamp(.75rem,2vh,1.5rem);
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: var(--small-size);
+    color: var(--text-dim);
+    z-index: 9998;
+    pointer-events: none;
+    opacity: 1;
+    transition: opacity .5s;
+    white-space: nowrap;
+}
+.keyboard-hint.hidden { opacity: 0; }
+
+/* ===========================================
+   INLINE EDITOR
+   =========================================== */
+.edit-hotzone {
+    position: fixed; top: 0; left: 0;
+    width: 80px; height: 80px;
+    z-index: 9998; cursor: default;
+}
+.edit-toggle {
+    position: fixed;
+    top: clamp(.6rem,1.5vh,1.2rem);
+    left: clamp(.6rem,1.5vw,1.2rem);
+    background: var(--bg-2);
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    font-size: var(--small-size);
+    font-family: var(--font);
+    padding: clamp(3px,.5vh,6px) clamp(8px,1.2vw,12px);
+    border-radius: 4px;
+    cursor: pointer;
+    z-index: 9999;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .3s, background .2s;
+    white-space: nowrap;
+}
+.edit-toggle.show, .edit-toggle.active {
+    opacity: 1;
+    pointer-events: auto;
+}
+.edit-toggle.active {
+    background: var(--green-bg);
+    border-color: var(--green-dim);
+    color: var(--green);
+}
+body.edit-mode [contenteditable] {
+    outline: 1px dashed var(--green-dim);
+    cursor: text;
+    min-width: 20px;
+    min-height: 1em;
+}
+body.edit-mode [contenteditable]:focus {
+    outline: 1px solid var(--green);
+    background: rgba(57,211,83,.04);
+}
+.edit-save-btn {
+    position: fixed;
+    bottom: clamp(.75rem,2vh,1.5rem);
+    right: clamp(.75rem,2vw,1.5rem);
+    background: var(--green-dim);
+    border: 1px solid var(--green);
+    color: var(--text);
+    font-family: var(--font);
+    font-size: var(--small-size);
+    padding: clamp(4px,.7vh,8px) clamp(10px,1.5vw,16px);
+    border-radius: 4px;
+    cursor: pointer;
+    z-index: 9999;
+    display: none;
+    transition: background .2s;
+}
+.edit-save-btn:hover { background: var(--green); color: var(--bg); }
+body.edit-mode .edit-save-btn { display: block; }
+
+/* ===========================================
+   SLIDE 1 — TITLE
+   =========================================== */
+#slide-1 .slide-content {
+    justify-content: flex-start;
+    padding-top: clamp(3rem,8vh,8rem);
+}
+.title-prompt {
+    display: flex;
+    align-items: baseline;
+    gap: clamp(4px,.6vw,8px);
+    font-size: var(--small-size);
+    color: var(--text-muted);
+    margin-bottom: clamp(.5rem,1.5vh,1.5rem);
+}
+.prompt-user { color: var(--green); font-weight: 700; }
+.prompt-at   { color: var(--text-muted); }
+.prompt-dir  { color: var(--blue); }
+.prompt-arr  { color: var(--green); }
+.prompt-cmd  { color: var(--text); }
+
+.main-title {
+    font-size: var(--title-size);
+    font-weight: 700;
+    line-height: .92;
+    letter-spacing: -.03em;
+    margin-bottom: var(--gap);
+}
+.main-title .intro-word { color: var(--text-muted); display: block; font-weight: 300; font-size: .65em; letter-spacing: .05em; margin-bottom: clamp(3px,.4vh,6px); }
+.main-title .docker-word { color: var(--green); text-shadow: 0 0 clamp(30px,4vw,60px) var(--green-glow); }
+
+.title-output {
+    background: var(--bg-2);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--green-dim);
+    border-radius: 0 clamp(4px,.5vw,6px) clamp(4px,.5vw,6px) 0;
+    padding: clamp(.5rem,1.2vh,1.2rem) clamp(.75rem,1.5vw,1.5rem);
+    max-width: min(90vw, 700px);
+    margin-bottom: var(--gap);
+}
+.output-line { font-size: var(--small-size); color: var(--text-muted); line-height: 1.8; }
+.output-line .ok { color: var(--green); }
+.output-line .info { color: var(--blue); }
+
+.cursor {
+    display: inline-block;
+    width: clamp(8px,1vw,11px);
+    height: 1.2em;
+    background: var(--green);
+    vertical-align: text-bottom;
+    animation: blink 1s step-end infinite;
+}
+@keyframes blink { 50% { opacity: 0; } }
+
+/* ===========================================
+   SLIDE 2 — AGENDA
+   =========================================== */
+.agenda-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--gap-sm);
+    max-height: min(65vh, 480px);
+}
+.agenda-item {
+    background: var(--bg-2);
+    border: 1px solid var(--border);
+    border-radius: clamp(4px,.5vw,8px);
+    padding: clamp(.5rem,1.2vh,1.2rem) clamp(.6rem,1.2vw,1.2rem);
+    display: flex;
+    align-items: center;
+    gap: clamp(.4rem,.8vw,.8rem);
+    transition: border-color .2s;
+}
+.agenda-item:hover { border-color: var(--green-dim); cursor: pointer; }
+.agenda-item[data-target] { cursor: pointer; }
+.agenda-num { color: var(--green-dim); font-size: var(--small-size); min-width: clamp(18px,2vw,28px); }
+.agenda-text { font-size: var(--small-size); color: var(--text); font-weight: 500; }
+.agenda-sub { font-size: var(--small-size); color: var(--text-muted); display: block; font-weight: 400; margin-top: 2px; }
+
+/* ===========================================
+   SLIDE 3 — MONOLITHIC
+   =========================================== */
+.arch-stack {
+    display: flex;
+    flex-direction: column;
+    gap: clamp(3px,.5vh,6px);
+    max-width: min(75vw, 560px);
+}
+.arch-row {
+    display: flex;
+    gap: clamp(3px,.5vh,6px);
+}
+.arch-box {
+    flex: 1;
+    padding: clamp(5px,1vh,10px) clamp(8px,1.2vw,12px);
+    font-size: var(--small-size);
+    text-align: center;
+    font-weight: 500;
+    border-radius: clamp(3px,.4vw,5px);
+    border: 1px solid var(--border);
+    background: var(--bg-2);
+    transition: .2s;
+}
+.arch-label {
+    font-size: var(--small-size);
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: .1em;
+    margin-bottom: clamp(2px,.3vh,4px);
+    display: block;
+}
+.arch-desc {
+    font-size: var(--small-size);
+    color: var(--text-muted);
+    margin-top: var(--gap-sm);
+    padding-left: clamp(8px,1.2vw,14px);
+    border-left: 2px solid var(--border);
+    max-width: min(75vw, 560px);
+}
+
+/* ===========================================
+   SLIDE 4 — VMs
+   =========================================== */
+.vm-layout {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    gap: var(--gap-sm);
+    max-width: min(90vw, 800px);
+}
+.vm-column { display: flex; flex-direction: column; gap: clamp(3px,.4vh,5px); }
+.vm-vs {
+    font-size: var(--small-size);
+    color: var(--text-dim);
+    text-align: center;
+    padding: 0 clamp(.3rem,.5vw,.5rem);
+    font-weight: 700;
+}
+
+/* ===========================================
+   SLIDE 5 — CONTAINER MODEL
+   =========================================== */
+.container-model {
+    display: flex;
+    flex-direction: column;
+    gap: clamp(3px,.5vh,5px);
+    max-width: min(80vw, 680px);
+}
+.container-row {
+    display: flex;
+    gap: clamp(3px,.5vh,5px);
+}
+.container-row .arch-box { flex: 1; }
+
+/* ===========================================
+   SLIDE 6 — AVANTAGES
+   =========================================== */
+.adv-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--gap-sm);
+    max-height: min(62vh, 450px);
+}
+.adv-card {
+    background: var(--bg-2);
+    border: 1px solid var(--border);
+    border-radius: clamp(4px,.5vw,8px);
+    padding: clamp(.5rem,1.2vh,1.2rem) clamp(.5rem,1vw,1rem);
+    transition: border-color .2s, background .2s;
+}
+.adv-card:hover { border-color: var(--green-dim); background: var(--green-bg); }
+.adv-icon { font-size: clamp(.9rem,1.8vw,1.4rem); margin-bottom: clamp(3px,.5vh,6px); display: block; }
+.adv-title { font-size: var(--small-size); font-weight: 700; color: var(--green); margin-bottom: clamp(2px,.3vh,4px); }
+.adv-desc { font-size: var(--small-size); color: var(--text-muted); line-height: 1.5; }
+
+/* ===========================================
+   SLIDE 7 — IMAGES DOCKER
+   =========================================== */
+.image-layers {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    max-width: min(70vw, 540px);
+    position: relative;
+}
+.image-layer {
+    border: 1px solid var(--border);
+    padding: clamp(5px,1vh,10px) clamp(8px,1.5vw,14px);
+    font-size: var(--small-size);
+    display: flex;
+    align-items: center;
+    gap: clamp(.4rem,.8vw,.8rem);
+    transition: background .2s;
+    position: relative;
+}
+.image-layer:first-child { border-radius: clamp(4px,.5vw,6px) clamp(4px,.5vw,6px) 0 0; }
+.image-layer:last-child  { border-radius: 0 0 clamp(4px,.5vw,6px) clamp(4px,.5vw,6px); }
+.image-layer + .image-layer { border-top: none; }
+.layer-icon { font-size: clamp(.8rem,1.5vw,1.1rem); min-width: clamp(18px,2.5vw,28px); text-align: center; }
+.layer-name { color: var(--text); font-weight: 500; flex: 1; }
+.layer-badge { font-size: clamp(.45rem,.7vw,.62rem); background: var(--bg-3); border: 1px solid var(--border); color: var(--text-muted); padding: 1px clamp(4px,.5vw,7px); border-radius: 3px; }
+
+.image-desc {
+    display: flex;
+    flex-direction: column;
+    gap: var(--gap-sm);
+    max-width: min(85vw, 600px);
+}
+.image-desc-item {
+    display: flex;
+    align-items: flex-start;
+    gap: clamp(.4rem,.8vw,.8rem);
+    font-size: var(--small-size);
+    color: var(--text-muted);
+}
+.image-desc-item .bullet { color: var(--green); flex-shrink: 0; }
+
+/* ===========================================
+   SLIDE 8 — EN PRODUCTION
+   =========================================== */
+.pipeline {
+    display: flex;
+    align-items: center;
+    gap: clamp(.3rem,.6vw,.6rem);
+    width: 100%;
+    flex-wrap: wrap;
+}
+.pipe-step {
+    background: var(--bg-2);
+    border: 1px solid var(--border);
+    border-radius: clamp(4px,.5vw,8px);
+    padding: clamp(.4rem,1vh,1rem) clamp(.5rem,1vw,1rem);
+    text-align: center;
+    min-width: clamp(70px,10vw,110px);
+    transition: border-color .2s;
+}
+.pipe-step:hover { border-color: var(--green-dim); }
+.pipe-step.active { border-color: var(--green-dim); background: var(--green-bg); }
+.pipe-icon { font-size: clamp(.8rem,1.5vw,1.2rem); display: block; margin-bottom: clamp(2px,.3vh,5px); }
+.pipe-name { font-size: var(--small-size); color: var(--text-muted); font-weight: 500; letter-spacing: .04em; }
+.pipe-arrow { color: var(--text-dim); font-size: var(--small-size); }
+
+.prod-info {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--gap-sm);
+    width: 100%;
+    margin-top: var(--gap);
+}
+.prod-card {
+    background: var(--bg-2);
+    border: 1px solid var(--border);
+    border-radius: clamp(4px,.5vw,8px);
+    padding: clamp(.5rem,1.2vh,1.2rem) clamp(.6rem,1.2vw,1.2rem);
+}
+.prod-card-title { font-size: var(--small-size); color: var(--blue); font-weight: 700; margin-bottom: clamp(3px,.4vh,6px); }
+.prod-card-text  { font-size: var(--small-size); color: var(--text-muted); line-height: 1.6; }
+
+/* ===========================================
+   SLIDE 9 — CRÉER SES IMAGES (DOCKERFILE)
+   =========================================== */
+/* uses .code-block defined above */
+
+/* ===========================================
+   SLIDE 10 — DOCKER COMPOSE
+   =========================================== */
+/* uses .code-block defined above */
+.compose-split {
+    display: flex;
+    flex-direction: row;
+    gap: clamp(2rem,4vw,5rem);
+    width: 100%;
+    align-items: stretch;
+}
+.compose-split > * { flex: 1; min-height: 0; }
+.compose-split > *:first-child { flex: 1.4; }
+
+/* ===========================================
+   SLIDE 11 — RESSOURCES
+   =========================================== */
+.resources-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--gap-sm);
+    max-width: min(85vw, 700px);
+}
+.resource-item {
+    display: flex;
+    align-items: center;
+    gap: clamp(.5rem,1vw,1rem);
+    background: var(--bg-2);
+    border: 1px solid var(--border);
+    border-radius: clamp(4px,.5vw,8px);
+    padding: clamp(.4rem,1vh,1rem) clamp(.6rem,1.2vw,1.2rem);
+    text-decoration: none;
+    transition: border-color .2s, background .2s;
+    color: inherit;
+}
+.resource-item:hover { border-color: var(--blue); background: rgba(88,166,255,.05); }
+.resource-icon { font-size: clamp(.9rem,1.5vw,1.2rem); min-width: clamp(20px,2vw,28px); }
+.resource-url { color: var(--blue); font-size: var(--small-size); flex: 1; word-break: break-all; }
+.resource-desc { font-size: var(--small-size); color: var(--text-muted); display: block; margin-top: 2px; }
+.resource-badge { font-size: var(--small-size); background: var(--bg-3); border: 1px solid var(--border); padding: 1px clamp(4px,.5vw,7px); border-radius: 3px; color: var(--text-muted); white-space: nowrap; }
+
+</style>
+</head>
+<body>
+
+<!-- ==========================================
+     GLOBAL UI ELEMENTS
+     ========================================== -->
+<div class="progress-bar" id="progressBar" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+<nav class="nav-dots" id="navDots" aria-label="Navigation"></nav>
+<div class="keyboard-hint" id="keyboardHint">↑↓ ou Espace pour naviguer</div>
+
+<!-- Inline editor controls -->
+<div class="edit-hotzone" id="editHotzone"></div>
+<button class="edit-toggle" id="editToggle" title="Mode édition (E)">✏ éditer</button>
+<button class="edit-save-btn" id="editSaveBtn">⬇ enregistrer</button>
+
+
+<!-- ==========================================
+     SLIDE 1 — TITLE
+     ========================================== -->
+<section class="slide" id="slide-1" aria-label="Titre">
+  <div class="term-bar">
+    <div class="term-dot td-r"></div>
+    <div class="term-dot td-y"></div>
+    <div class="term-dot td-g"></div>
+    <span class="term-title">theo@cloud-s2:~/CM2 — bash</span>
+    <span class="term-slide-num">1/14</span>
+  </div>
+
+  <div class="slide-content" style="padding-top: clamp(3rem,8vh,8rem);">
+    <div class="title-prompt reveal">
+      <span class="prompt-user">theo</span>
+      <span class="prompt-at">@</span>
+      <span class="prompt-dir">cloud-s2</span>
+      <span class="prompt-arr">❯</span>
+      <span class="prompt-cmd">docker run --rm -it cours/cm2</span>
+    </div>
+
+    <h1 class="main-title reveal" contenteditable="false">
+      <span class="intro-word">Introduction à</span>
+      <span class="docker-word">Docker</span>
+    </h1>
+
+    <div class="title-output reveal">
+      <p class="output-line"><span class="ok">✓</span> Pulling from cours/cm2 ... <span class="ok">Done</span></p>
+      <p class="output-line"><span class="info">→</span> Conteneurisation &amp; DevOps · Cloud S2</p>
+      <p class="output-line"><span class="info">→</span> 14 sections</p>
+    </div>
+
+    <div class="reveal" style="display:flex;align-items:center;gap:clamp(.3rem,.6vw,.6rem);">
+      <span class="prompt-user">theo</span>
+      <span class="prompt-at">@</span>
+      <span class="prompt-dir">cloud-s2</span>
+      <span class="prompt-arr">❯</span>
+      <span class="cursor"></span>
+    </div>
+  </div>
+
+  <div style="position:absolute;bottom:clamp(1.5rem,4vh,4rem);right:clamp(1.5rem,3vw,3rem);font-size:var(--small-size);color:var(--text-dim);" class="reveal">
+    Theo Rey · Site Reliability Engineer · contact@reyth.dev
+  </div>
+</section>
+
+
+<!-- ==========================================
+     SLIDE 2 — AGENDA
+     ========================================== -->
+<section class="slide" id="slide-2" aria-label="Agenda">
+  <div class="term-bar">
+    <div class="term-dot td-r"></div><div class="term-dot td-y"></div><div class="term-dot td-g"></div>
+    <span class="term-title">theo@cloud-s2:~/CM2 — cat agenda.md</span>
+    <span class="term-slide-num">2/14</span>
+  </div>
+
+  <div class="slide-content">
+    <h2 class="slide-heading reveal">
+      <span class="comment"># programme du cours</span>
+      <span class="prompt-mark">$</span> Au programme
+    </h2>
+
+    <div class="agenda-grid">
+      <div class="agenda-item reveal-left" data-target="slide-3" role="button" tabindex="0">
+        <span class="agenda-num">01</span>
+        <div><span class="agenda-text">Déploiement traditionnel</span><span class="agenda-sub">Monolithes &amp; serveurs dédiés</span></div>
+      </div>
+      <div class="agenda-item reveal-left" data-target="slide-4" role="button" tabindex="0">
+        <span class="agenda-num">02</span>
+        <div><span class="agenda-text">Machines Virtuelles</span><span class="agenda-sub">Hyperviseur, isolation complète</span></div>
+      </div>
+      <div class="agenda-item reveal-left" data-target="slide-5" role="button" tabindex="0">
+        <span class="agenda-num">03</span>
+        <div><span class="agenda-text">Le modèle Container</span><span class="agenda-sub">Docker Engine, namespaces Linux</span></div>
+      </div>
+      <div class="agenda-item reveal-left" data-target="slide-6" role="button" tabindex="0">
+        <span class="agenda-num">04</span>
+        <div><span class="agenda-text">Avantages des containers</span><span class="agenda-sub">Portabilité, isolation, rapidité</span></div>
+      </div>
+      <div class="agenda-item reveal-left" data-target="slide-7" role="button" tabindex="0">
+        <span class="agenda-num">05</span>
+        <div><span class="agenda-text">Images Docker</span><span class="agenda-sub">Registry, layers, tags</span></div>
+      </div>
+      <div class="agenda-item reveal-left" data-target="slide-9" role="button" tabindex="0">
+        <span class="agenda-num">06</span>
+        <div><span class="agenda-text">Dockerfile &amp; Compose</span><span class="agenda-sub">Créer et orchestrer ses images</span></div>
+      </div>
+      <div class="agenda-item reveal-left" data-target="slide-10" role="button" tabindex="0">
+        <span class="agenda-num">08</span>
+        <div><span class="agenda-text">En production</span><span class="agenda-sub">Comment faire ça à l'échelle</span></div>
+      </div>
+      <div class="agenda-item reveal-left" data-target="slide-11" role="button" tabindex="0">
+        <span class="agenda-num">09</span>
+        <div><span class="agenda-text">LLMs &amp; Docker</span><span class="agenda-sub">Savoir ce qu'on fait avec l'IA</span></div>
+      </div>
+      <div class="agenda-item reveal-left" data-target="slide-14" role="button" tabindex="0">
+        <span class="agenda-num">10</span>
+        <div><span class="agenda-text">Pour aller plus loin</span><span class="agenda-sub">Ressources &amp; références</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ==========================================
+     SLIDE 3 — CE QUE VOUS AVEZ L'HABITUDE
+     ========================================== -->
+<section class="slide" id="slide-3" aria-label="Déploiement traditionnel">
+  <div class="term-bar">
+    <div class="term-dot td-r"></div><div class="term-dot td-y"></div><div class="term-dot td-g"></div>
+    <span class="term-title">theo@cloud-s2:~/CM2 — git log --oneline "avant docker"</span>
+    <span class="term-slide-num">3/14</span>
+  </div>
+
+  <div class="slide-content">
+    <h2 class="slide-heading reveal">
+      <span class="comment"># déploiement classique</span>
+      <span class="prompt-mark">$</span> Ce que vous avez l'habitude
+    </h2>
+    <div style="display:flex;gap:clamp(2rem,4vw,5rem);align-items:flex-start;">
+      <div style="flex:1;display:flex;flex-direction:column;gap:var(--gap);">
+        <p class="reveal" style="font-size:var(--small-size);color:var(--text-muted);line-height:1.7;">
+          Application monolithique déployée directement sur un <code>serveur physique</code>. Tout partage le même OS. Un crash peut tout impacter.
+        </p>
+        <div class="arch-desc reveal" style="border-left-color:var(--red);">
+          <span style="color:var(--red);font-size:var(--small-size);font-weight:700;">Problèmes</span><br>
+          <span style="font-size:var(--small-size);color:var(--text-muted);line-height:1.7;">"Works on my machine" · Conflits de dépendances · Scaling difficile · Déploiements risqués</span>
+        </div>
+      </div>
+      <div style="flex:1;display:flex;flex-direction:column;gap:0;">
+        <!-- Stack diagram -->
+        <div class="arch-box reveal" style="border-radius:clamp(4px,.5vw,6px) clamp(4px,.5vw,6px) 0 0;border-bottom:none;">
+          <span class="arch-label">App Layer</span>
+          <div style="display:flex;gap:clamp(3px,.4vh,5px);">
+            <div class="arch-box orange" style="border-radius:clamp(3px,.4vw,5px);">App A</div>
+            <div class="arch-box orange" style="border-radius:clamp(3px,.4vw,5px);">App B</div>
+            <div class="arch-box orange" style="border-radius:clamp(3px,.4vw,5px);">App C</div>
+          </div>
+        </div>
+        <div class="arch-box reveal" style="border-radius:0;border-top:none;border-bottom:none;">
+          <span class="arch-label">Runtime / Libs</span>
+          Python 3.9 · Node 16 · Java 11
+        </div>
+        <div class="arch-box reveal blue" style="border-radius:0;border-top:none;border-bottom:none;">
+          <span class="arch-label">Système d'exploitation</span>
+          Ubuntu 22.04
+        </div>
+        <div class="arch-box reveal" style="border-radius:0 0 clamp(4px,.5vw,6px) clamp(4px,.5vw,6px);background:var(--bg-3);">
+          <span class="arch-label">Matériel physique</span>
+          CPU · RAM · Disque
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ==========================================
+     SLIDE 4 — MACHINES VIRTUELLES
+     ========================================== -->
+<section class="slide" id="slide-4" aria-label="Machines Virtuelles">
+  <div class="term-bar">
+    <div class="term-dot td-r"></div><div class="term-dot td-y"></div><div class="term-dot td-g"></div>
+    <span class="term-title">theo@cloud-s2:~/CM2 — man virtualbox</span>
+    <span class="term-slide-num">4/14</span>
+  </div>
+
+  <div class="slide-content">
+    <h2 class="slide-heading reveal">
+      <span class="comment"># ce que vous avez vu la semaine dernière</span>
+      <span class="prompt-mark">$</span> Les Machines Virtuelles
+    </h2>
+
+    <div style="display:flex;gap:var(--gap);align-items:flex-start;flex-wrap:wrap;">
+      <!-- VM diagram -->
+      <div style="display:flex;flex-direction:column;gap:clamp(3px,.4vh,5px);flex:1;min-width:min(90vw,280px);max-width:min(50vw,420px);">
+        <!-- VMs side by side -->
+        <div style="display:flex;gap:clamp(3px,.4vh,5px);">
+          <div style="flex:1;display:flex;flex-direction:column;gap:0;" class="reveal">
+            <div class="arch-box orange" style="border-radius:clamp(4px,.5vw,6px) clamp(4px,.5vw,6px) 0 0;border-bottom:none;font-size:var(--small-size);">App A</div>
+            <div class="arch-box" style="border-radius:0;border-top:none;border-bottom:none;font-size:var(--small-size);">Libs</div>
+            <div class="arch-box blue" style="border-radius:0 0 clamp(4px,.5vw,6px) clamp(4px,.5vw,6px);font-size:var(--small-size);">OS invité</div>
+          </div>
+          <div style="flex:1;display:flex;flex-direction:column;gap:0;" class="reveal">
+            <div class="arch-box orange" style="border-radius:clamp(4px,.5vw,6px) clamp(4px,.5vw,6px) 0 0;border-bottom:none;font-size:var(--small-size);">App B</div>
+            <div class="arch-box" style="border-radius:0;border-top:none;border-bottom:none;font-size:var(--small-size);">Libs</div>
+            <div class="arch-box blue" style="border-radius:0 0 clamp(4px,.5vw,6px) clamp(4px,.5vw,6px);font-size:var(--small-size);">OS invité</div>
+          </div>
+        </div>
+        <div class="arch-box purple reveal" style="font-size:var(--small-size);">Hyperviseur (VMware, VirtualBox, KVM)</div>
+        <div class="arch-box blue reveal" style="font-size:var(--small-size);">OS hôte</div>
+        <div class="arch-box reveal" style="background:var(--bg-3);font-size:var(--small-size);">Matériel physique</div>
+      </div>
+
+      <!-- Characteristics -->
+      <div style="flex:1;min-width:min(90vw,240px);display:flex;flex-direction:column;gap:var(--gap-sm);">
+        <div class="reveal" style="background:var(--bg-2);border:1px solid var(--border);border-radius:clamp(4px,.5vw,8px);padding:clamp(.5rem,1.2vh,1.2rem);">
+          <div style="font-size:var(--small-size);color:var(--green);font-weight:700;margin-bottom:clamp(4px,.6vh,6px);">✓ Avantages</div>
+          <div style="font-size:var(--small-size);color:var(--text-muted);line-height:1.8;">Isolation complète · Sécurité forte · OS différents possible</div>
+        </div>
+        <div class="reveal" style="background:var(--bg-2);border:1px solid var(--border);border-radius:clamp(4px,.5vw,8px);padding:clamp(.5rem,1.2vh,1.2rem);">
+          <div style="font-size:var(--small-size);color:var(--red);font-weight:700;margin-bottom:clamp(4px,.6vh,6px);">✗ Inconvénients</div>
+          <div style="font-size:var(--small-size);color:var(--text-muted);line-height:1.8;">Lent à démarrer (minutes) · Lourd en ressources · OS complet dupliqué par VM</div>
+        </div>
+        <div class="reveal" style="font-size:var(--small-size);color:var(--text-dim);font-style:italic;padding-left:clamp(6px,1vw,10px);border-left:2px solid var(--border);">
+          → Chaque VM inclut un OS complet : des Go de RAM gaspillés
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ==========================================
+     SLIDE 5 — LE MODÈLE DES CONTAINERS
+     ========================================== -->
+<section class="slide" id="slide-5" aria-label="Modèle des containers">
+  <div class="term-bar">
+    <div class="term-dot td-r"></div><div class="term-dot td-y"></div><div class="term-dot td-g"></div>
+    <span class="term-title">theo@cloud-s2:~/CM2 — docker ps</span>
+    <span class="term-slide-num">5/14</span>
+  </div>
+
+  <div class="slide-content">
+    <h2 class="slide-heading reveal">
+      <span class="comment"># la révolution de la conteneurisation</span>
+      <span class="prompt-mark">$</span> Le modèle des Containers
+    </h2>
+
+    <div style="display:flex;gap:var(--gap);align-items:flex-start;flex-wrap:wrap;">
+      <!-- Container diagram -->
+      <div style="display:flex;flex-direction:column;gap:clamp(3px,.4vh,5px);flex:1;min-width:min(90vw,280px);max-width:min(55vw,460px);">
+        <div style="display:flex;gap:clamp(3px,.4vh,5px);" class="reveal">
+          <div class="arch-box green" style="flex:1;border-radius:clamp(4px,.5vw,6px);font-size:var(--small-size);">
+            <div style="font-size:clamp(.45rem,.7vw,.6rem);margin-bottom:2px;">Container</div>
+            App A + Libs
+          </div>
+          <div class="arch-box green" style="flex:1;border-radius:clamp(4px,.5vw,6px);font-size:var(--small-size);">
+            <div style="font-size:clamp(.45rem,.7vw,.6rem);margin-bottom:2px;">Container</div>
+            App B + Libs
+          </div>
+          <div class="arch-box green" style="flex:1;border-radius:clamp(4px,.5vw,6px);font-size:var(--small-size);">
+            <div style="font-size:clamp(.45rem,.7vw,.6rem);margin-bottom:2px;">Container</div>
+            App C + Libs
+          </div>
+        </div>
+        <div class="arch-box reveal" style="background:rgba(57,211,83,.12);border-color:var(--green-dim);color:var(--green);font-size:var(--small-size);">
+          Docker Engine (containerd + runc)
+        </div>
+        <div class="arch-box blue reveal" style="font-size:var(--small-size);">OS hôte (kernel Linux partagé)</div>
+        <div class="arch-box reveal" style="background:var(--bg-3);font-size:var(--small-size);">Matériel physique</div>
+      </div>
+
+      <!-- Comparison & key concepts -->
+      <div style="flex:1;min-width:min(90vw,220px);display:flex;flex-direction:column;gap:var(--gap-sm);">
+        <div class="reveal" style="background:var(--bg-2);border:1px solid var(--green-dim);border-radius:clamp(4px,.5vw,8px);padding:clamp(.5rem,1.2vh,1.2rem);">
+          <div style="font-size:var(--small-size);color:var(--green);font-weight:700;margin-bottom:clamp(4px,.6vh,8px);">Clé de compréhension</div>
+          <div style="font-size:var(--small-size);color:var(--text-muted);line-height:1.8;">
+            Les containers partagent le <span style="color:var(--blue);">kernel Linux</span> de l'hôte — pas besoin d'OS complet. Seulement les libs nécessaires sont incluses.
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:clamp(3px,.4vh,5px);">
+          <div class="reveal" style="text-align:center;background:var(--bg-2);border:1px solid var(--border);border-radius:clamp(4px,.5vw,6px);padding:clamp(.4rem,.8vh,.8rem);">
+            <div style="font-size:clamp(.8rem,1.5vw,1.2rem);">⚡</div>
+            <div style="font-size:var(--small-size);color:var(--text-muted);">Démarrage<br><span style="color:var(--green);">millisecondes</span></div>
+          </div>
+          <div class="reveal" style="text-align:center;background:var(--bg-2);border:1px solid var(--border);border-radius:clamp(4px,.5vw,6px);padding:clamp(.4rem,.8vh,.8rem);">
+            <div style="font-size:clamp(.8rem,1.5vw,1.2rem);">🪶</div>
+            <div style="font-size:var(--small-size);color:var(--text-muted);">Poids<br><span style="color:var(--green);">quelques Mo</span></div>
+          </div>
+          <div class="reveal" style="text-align:center;background:var(--bg-2);border:1px solid var(--border);border-radius:clamp(4px,.5vw,6px);padding:clamp(.4rem,.8vh,.8rem);">
+            <div style="font-size:clamp(.8rem,1.5vw,1.2rem);">📦</div>
+            <div style="font-size:var(--small-size);color:var(--text-muted);">Portabilité<br><span style="color:var(--green);">any OS</span></div>
+          </div>
+          <div class="reveal" style="text-align:center;background:var(--bg-2);border:1px solid var(--border);border-radius:clamp(4px,.5vw,6px);padding:clamp(.4rem,.8vh,.8rem);">
+            <div style="font-size:clamp(.8rem,1.5vw,1.2rem);">🔒</div>
+            <div style="font-size:var(--small-size);color:var(--text-muted);">Isolation<br><span style="color:var(--green);">namespaces</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ==========================================
+     SLIDE 6 — LES AVANTAGES
+     ========================================== -->
+<section class="slide" id="slide-6" aria-label="Avantages des containers">
+  <div class="term-bar">
+    <div class="term-dot td-r"></div><div class="term-dot td-y"></div><div class="term-dot td-g"></div>
+    <span class="term-title">theo@cloud-s2:~/CM2 — docker --help | grep why</span>
+    <span class="term-slide-num">6/14</span>
+  </div>
+
+  <div class="slide-content">
+    <h2 class="slide-heading reveal">
+      <span class="comment"># pourquoi utiliser Docker ?</span>
+      <span class="prompt-mark">$</span> Les Avantages
+    </h2>
+
+    <div class="adv-grid">
+      <div class="adv-card reveal">
+        <span class="adv-icon">📦</span>
+        <div class="adv-title">Portabilité</div>
+        <div class="adv-desc">Build once, run anywhere. Fonctionne en dev, CI, prod — identique.</div>
+      </div>
+      <div class="adv-card reveal">
+        <span class="adv-icon">⚡</span>
+        <div class="adv-title">Rapidité</div>
+        <div class="adv-desc">Démarrage en millisecondes, pas en minutes comme les VMs.</div>
+      </div>
+      <div class="adv-card reveal">
+        <span class="adv-icon">🔒</span>
+        <div class="adv-title">Isolation</div>
+        <div class="adv-desc">Chaque container a ses propres libs, ports, filesystem. Pas de conflits.</div>
+      </div>
+      <div class="adv-card reveal">
+        <span class="adv-icon">📈</span>
+        <div class="adv-title">Scalabilité</div>
+        <div class="adv-desc">Répliquer un container en secondes. Scaling horizontal trivial.</div>
+      </div>
+      <div class="adv-card reveal">
+        <span class="adv-icon">🔄</span>
+        <div class="adv-title">Reproductibilité</div>
+        <div class="adv-desc">Infrastructure as Code. Chaque build est identique et traçable.</div>
+      </div>
+      <div class="adv-card reveal">
+        <span class="adv-icon">🌐</span>
+        <div class="adv-title">Écosystème</div>
+        <div class="adv-desc">Docker Hub : des milliers d'images prêtes. Nginx, Postgres, Redis...</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ==========================================
+     SLIDE 7 — LES IMAGES DOCKER
+     ========================================== -->
+<section class="slide" id="slide-7" aria-label="Images Docker">
+  <div class="term-bar">
+    <div class="term-dot td-r"></div><div class="term-dot td-y"></div><div class="term-dot td-g"></div>
+    <span class="term-title">theo@cloud-s2:~/CM2 — docker image ls</span>
+    <span class="term-slide-num">7/14</span>
+  </div>
+
+  <div class="slide-content">
+    <h2 class="slide-heading reveal">
+      <span class="comment"># les images = templates de containers</span>
+      <span class="prompt-mark">$</span> Les Images Docker
+    </h2>
+    <div style="display:flex;gap:clamp(2rem,4vw,5rem);align-items:flex-start;">
+      <div style="flex:1;display:flex;flex-direction:column;gap:var(--gap);">
+        <div class="image-desc reveal">
+          <div class="image-desc-item">
+            <span class="bullet">▸</span>
+            <span>Une image est un <strong style="color:var(--text);">système de fichiers en couches</strong> (layers) — chaque instruction Dockerfile crée une couche.</span>
+          </div>
+          <div class="image-desc-item">
+            <span class="bullet">▸</span>
+            <span>Les couches sont <strong style="color:var(--text);">partagées</strong> entre images — stockage optimisé sur le disque.</span>
+          </div>
+          <div class="image-desc-item">
+            <span class="bullet">▸</span>
+            <span>Hébergées sur un <strong style="color:var(--text);">Registry</strong> : Docker Hub, GHCR, ECR...</span>
+          </div>
+          <div class="image-desc-item">
+            <span class="bullet">▸</span>
+            <span>Identifiées par <code>image:tag</code> — ex: <code>nginx:1.25</code>, <code>node:20-alpine</code></span>
+          </div>
+        </div>
+      </div>
+      <!-- Layer cake diagram -->
+      <div style="flex:1;display:flex;flex-direction:column;gap:0;">
+        <div class="image-layer reveal" style="background:var(--bg-3);border-radius:clamp(4px,.5vw,6px) clamp(4px,.5vw,6px) 0 0;border-bottom:none;">
+          <span class="layer-icon">🏃</span>
+          <span class="layer-name">Container (R/W)</span>
+          <span class="layer-badge">éphémère</span>
+        </div>
+        <div class="image-layer reveal" style="border-bottom:none;background:rgba(240,136,62,.06);">
+          <span class="layer-icon">📝</span>
+          <span class="layer-name" style="color:var(--orange);">Code applicatif</span>
+          <span class="layer-badge" style="color:var(--orange);">COPY ./app</span>
+        </div>
+        <div class="image-layer reveal" style="border-bottom:none;">
+          <span class="layer-icon">📦</span>
+          <span class="layer-name">Dépendances</span>
+          <span class="layer-badge">RUN pip install</span>
+        </div>
+        <div class="image-layer reveal" style="border-bottom:none;background:rgba(88,166,255,.06);">
+          <span class="layer-icon">🐍</span>
+          <span class="layer-name" style="color:var(--blue);">Runtime (Python)</span>
+          <span class="layer-badge" style="color:var(--blue);">FROM python:3.11</span>
+        </div>
+        <div class="image-layer reveal" style="border-radius:0 0 clamp(4px,.5vw,6px) clamp(4px,.5vw,6px);background:rgba(57,211,83,.06);">
+          <span class="layer-icon">🐧</span>
+          <span class="layer-name" style="color:var(--green);">OS Base (Alpine)</span>
+          <span class="layer-badge" style="color:var(--green);">base layer</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ==========================================
+     SLIDE 8 — CRÉER SES IMAGES (DOCKERFILE)
+     ========================================== -->
+<section class="slide" id="slide-8" aria-label="Créer ses images">
+  <div class="term-bar">
+    <div class="term-dot td-r"></div><div class="term-dot td-y"></div><div class="term-dot td-g"></div>
+    <span class="term-title">theo@cloud-s2:~/myapp — cat Dockerfile</span>
+    <span class="term-slide-num">8/14</span>
+  </div>
+
+  <div class="slide-content">
+    <h2 class="slide-heading reveal">
+      <span class="comment"># définir son image avec un Dockerfile</span>
+      <span class="prompt-mark">$</span> Créer ses Images
+    </h2>
+    <div style="display:flex;gap:clamp(2rem,4vw,5rem);align-items:flex-start;">
+    <!-- Left: keyword rows + commands -->
+    <div style="flex:1;display:flex;flex-direction:column;gap:var(--gap-sm);">
+      <div class="reveal" style="display:flex;align-items:center;gap:clamp(.6rem,1vw,1rem);background:var(--bg-2);border:1px solid var(--border);border-radius:clamp(4px,.5vw,6px);padding:clamp(.5rem,1.2vh,1.2rem);">
+        <span style="color:var(--purple);font-weight:700;font-size:var(--small-size);min-width:3.5em;">FROM</span>
+        <span style="font-size:var(--small-size);color:var(--text-muted);">Image de base — l'OS + runtime</span>
+      </div>
+      <div class="reveal" style="display:flex;align-items:center;gap:clamp(.6rem,1vw,1rem);background:var(--bg-2);border:1px solid var(--border);border-radius:clamp(4px,.5vw,6px);padding:clamp(.5rem,1.2vh,1.2rem);">
+        <span style="color:var(--blue);font-weight:700;font-size:var(--small-size);min-width:3.5em;">RUN</span>
+        <span style="font-size:var(--small-size);color:var(--text-muted);">Exécuter une commande (crée une layer)</span>
+      </div>
+      <div class="reveal" style="display:flex;align-items:center;gap:clamp(.6rem,1vw,1rem);background:var(--bg-2);border:1px solid var(--border);border-radius:clamp(4px,.5vw,6px);padding:clamp(.5rem,1.2vh,1.2rem);">
+        <span style="color:var(--orange);font-weight:700;font-size:var(--small-size);min-width:3.5em;">COPY</span>
+        <span style="font-size:var(--small-size);color:var(--text-muted);">Copier des fichiers dans l'image</span>
+      </div>
+      <div class="reveal" style="display:flex;align-items:center;gap:clamp(.6rem,1vw,1rem);background:var(--bg-2);border:1px solid var(--border);border-radius:clamp(4px,.5vw,6px);padding:clamp(.5rem,1.2vh,1.2rem);">
+        <span style="color:var(--green);font-weight:700;font-size:var(--small-size);min-width:3.5em;">CMD</span>
+        <span style="font-size:var(--small-size);color:var(--text-muted);">Commande par défaut au démarrage</span>
+      </div>
+      <div class="reveal" style="background:var(--bg-2);border:1px solid var(--border);border-left:3px solid var(--green-dim);border-radius:0 clamp(4px,.5vw,6px) clamp(4px,.5vw,6px) 0;padding:clamp(.5rem,1.2vh,1.2rem) clamp(.6rem,1.2vw,1.2rem);margin-top:var(--gap-sm);">
+        <div style="font-size:var(--small-size);color:var(--text-muted);line-height:2.1;">
+          <span style="color:var(--green);">docker build</span> -t <span style="color:var(--orange);">monapp:v1</span> .<br>
+          <span style="color:var(--green);">docker run</span> -p <span style="color:var(--blue);">8080:80</span> monapp:v1<br>
+          <span style="color:var(--green);">docker push</span> monapp:v1
+        </div>
+      </div>
+    </div>
+
+    <!-- Right: Dockerfile code, top-aligned with first box -->
+    <div style="flex:1.4;" class="reveal">
+      <div style="font-size:var(--small-size);color:var(--text-muted);margin-bottom:clamp(4px,.6vh,8px);">Dockerfile</div>
+      <div class="code-block">
+        <pre><span class="ln">1</span> <span class="kw">FROM</span> <span class="arg">python:3.11-alpine</span>
+<span class="ln">2</span> <span class="kw">WORKDIR</span> <span class="str">/app</span>
+<span class="cmt">   # dépendances d'abord (cache Docker)</span>
+<span class="ln">3</span> <span class="kw">COPY</span> <span class="arg">requirements.txt</span> <span class="str">.</span>
+<span class="ln">4</span> <span class="kw">RUN</span> <span class="cmd">pip install</span> <span class="flag">-r</span> <span class="arg">requirements.txt</span>
+<span class="cmt">   # code applicatif</span>
+<span class="ln">5</span> <span class="kw">COPY</span> <span class="arg">.</span> <span class="str">.</span>
+<span class="ln">6</span> <span class="kw">EXPOSE</span> <span class="val">5000</span>
+<span class="ln">7</span> <span class="kw">CMD</span> [<span class="str">"python"</span>, <span class="str">"app.py"</span>]</pre>
+      </div>
+    </div>
+    </div><!-- end flex row -->
+  </div>
+</section>
+
+
+<!-- ==========================================
+     SLIDE 9 — DOCKER COMPOSE
+     ========================================== -->
+<section class="slide" id="slide-9" aria-label="Docker Compose">
+  <div class="term-bar">
+    <div class="term-dot td-r"></div><div class="term-dot td-y"></div><div class="term-dot td-g"></div>
+    <span class="term-title">theo@cloud-s2:~/myapp — docker compose up -d</span>
+    <span class="term-slide-num">9/14</span>
+  </div>
+
+  <div class="slide-content">
+    <!-- Heading full-width above columns -->
+    <h2 class="slide-heading reveal" style="margin-bottom:var(--gap-sm);">
+      <span class="comment"># orchestrer plusieurs containers localement</span>
+      <span class="prompt-mark">$</span> Docker Compose
+    </h2>
+    <div style="display:flex;gap:clamp(2rem,4vw,5rem);align-items:flex-start;">
+    <!-- Left: 3 cards + commands -->
+    <div style="flex:1;display:flex;flex-direction:column;gap:var(--gap-sm);">
+      <div class="reveal" style="display:flex;align-items:center;gap:clamp(.6rem,1vw,1rem);background:var(--bg-2);border:1px solid var(--border);border-radius:clamp(4px,.5vw,6px);padding:clamp(.5rem,1.2vh,1.2rem);">
+        <span style="color:var(--green);font-weight:700;font-size:var(--small-size);min-width:3.5em;">📄</span>
+        <div><div style="font-size:var(--small-size);color:var(--text);font-weight:600;">Un seul fichier YAML</div><div style="font-size:var(--small-size);color:var(--text-muted);">Toute la stack : app, BDD, cache, proxy...</div></div>
+      </div>
+      <div class="reveal" style="display:flex;align-items:center;gap:clamp(.6rem,1vw,1rem);background:var(--bg-2);border:1px solid var(--border);border-radius:clamp(4px,.5vw,6px);padding:clamp(.5rem,1.2vh,1.2rem);">
+        <span style="color:var(--blue);font-weight:700;font-size:var(--small-size);min-width:3.5em;">🔗</span>
+        <div><div style="font-size:var(--small-size);color:var(--text);font-weight:600;">Réseau automatique</div><div style="font-size:var(--small-size);color:var(--text-muted);">Services accessibles par leur nom : <code>db</code>, <code>web</code></div></div>
+      </div>
+      <div class="reveal" style="display:flex;align-items:center;gap:clamp(.6rem,1vw,1rem);background:var(--bg-2);border:1px solid var(--border);border-radius:clamp(4px,.5vw,6px);padding:clamp(.5rem,1.2vh,1.2rem);">
+        <span style="color:var(--orange);font-weight:700;font-size:var(--small-size);min-width:3.5em;">📦</span>
+        <div><div style="font-size:var(--small-size);color:var(--text);font-weight:600;">Volumes persistants</div><div style="font-size:var(--small-size);color:var(--text-muted);">Données conservées entre les restarts</div></div>
+      </div>
+      <div class="reveal" style="background:var(--bg-2);border:1px solid var(--border);border-left:3px solid var(--green-dim);border-radius:0 clamp(4px,.5vw,6px) clamp(4px,.5vw,6px) 0;padding:clamp(.5rem,1.2vh,1.2rem) clamp(.6rem,1.2vw,1.2rem);margin-top:var(--gap-sm);">
+        <div style="font-size:var(--small-size);color:var(--text-muted);line-height:2.1;">
+          <span style="color:var(--green);">docker compose up -d</span> — démarrer<br>
+          <span style="color:var(--green);">docker compose down</span> — arrêter<br>
+          <span style="color:var(--green);">docker compose logs -f</span> — suivre
+        </div>
+      </div>
+    </div>
+
+    <!-- Right: YAML code, top-aligned with first card -->
+    <div style="flex:1.4;" class="reveal">
+      <div style="font-size:var(--small-size);color:var(--text-muted);margin-bottom:clamp(4px,.6vh,8px);">docker-compose.yml</div>
+      <div class="code-block">
+        <pre><span class="ln"> 1</span> <span class="kw">services</span>:
+<span class="ln"> 2</span>   <span class="arg">web</span>:
+<span class="ln"> 3</span>     <span class="kw">image</span>: <span class="str">gitea/gitea:latest</span>
+<span class="ln"> 4</span>     <span class="kw">ports</span>: [<span class="str">"3000:3000"</span>]
+<span class="ln"> 5</span>     <span class="kw">depends_on</span>: [<span class="arg">db</span>]
+<span class="ln"> 6</span>   <span class="arg">db</span>:
+<span class="ln"> 7</span>     <span class="kw">image</span>: <span class="str">postgres:15-alpine</span>
+<span class="ln"> 8</span>     <span class="kw">volumes</span>: [<span class="val">pgdata:/var/lib/postgresql</span>]
+<span class="ln"> 9</span>     <span class="kw">environment</span>:
+<span class="ln">10</span>       - <span class="val">POSTGRES_PASSWORD=pass</span>
+<span class="ln">11</span> <span class="kw">volumes</span>:
+<span class="ln">12</span>   <span class="arg">pgdata</span>:</pre>
+      </div>
+    </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ==========================================
+     SLIDE 10 — EN PRODUCTION
+     ========================================== -->
+<section class="slide" id="slide-10" aria-label="En production">
+  <div class="term-bar">
+    <div class="term-dot td-r"></div><div class="term-dot td-y"></div><div class="term-dot td-g"></div>
+    <span class="term-title">theo@cloud-s2:~/CM2 — kubectl get pods --all-namespaces</span>
+    <span class="term-slide-num">10/14</span>
+  </div>
+
+  <div class="slide-content">
+    <h2 class="slide-heading reveal">
+      <span class="comment"># de local à production</span>
+      <span class="prompt-mark">$</span> En Production
+    </h2>
+
+    <!-- CI/CD Pipeline -->
+    <div class="pipeline reveal" style="margin-bottom:var(--gap);width:100%;">
+      <div class="pipe-step active" style="flex:1;">
+        <span class="pipe-icon">✏️</span>
+        <span class="pipe-name">Code</span>
+      </div>
+      <span class="pipe-arrow">→</span>
+      <div class="pipe-step" style="flex:1;">
+        <span class="pipe-icon">🔧</span>
+        <span class="pipe-name">Build<br>docker build</span>
+      </div>
+      <span class="pipe-arrow">→</span>
+      <div class="pipe-step" style="flex:1;">
+        <span class="pipe-icon">🧪</span>
+        <span class="pipe-name">Test<br>CI/CD</span>
+      </div>
+      <span class="pipe-arrow">→</span>
+      <div class="pipe-step" style="flex:1;">
+        <span class="pipe-icon">📤</span>
+        <span class="pipe-name">Push<br>Registry</span>
+      </div>
+      <span class="pipe-arrow">→</span>
+      <div class="pipe-step" style="flex:1;">
+        <span class="pipe-icon">🚀</span>
+        <span class="pipe-name">Deploy<br>docker run</span>
+      </div>
+    </div>
+
+    <div class="prod-info reveal" style="max-width:100%;width:100%;">
+      <div class="prod-card">
+        <div class="prod-card-title">🐳 Docker seul</div>
+        <div class="prod-card-text">
+          <code>docker run</code> · <code>docker-compose up</code><br>
+          Adapté pour un seul serveur, dev, petites apps. Simple à opérer.
+        </div>
+      </div>
+      <div class="prod-card">
+        <div class="prod-card-title">☸️ Kubernetes (Orchestration)</div>
+        <div class="prod-card-text">
+          Gère des centaines de containers sur plusieurs serveurs. Auto-scaling, self-healing, rolling updates.
+        </div>
+      </div>
+      <div class="prod-card">
+        <div class="prod-card-title">📋 Docker Swarm</div>
+        <div class="prod-card-text">
+          L'orchestrateur natif Docker. Plus simple que K8s, intégré dans Docker Engine. Bon intermédiaire.
+        </div>
+      </div>
+      <div class="prod-card">
+        <div class="prod-card-title">☁️ Managed (Cloud)</div>
+        <div class="prod-card-text">
+          ECS (AWS), Cloud Run (GCP), Azure ACI. Abstraction totale de l'infrastructure.
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ==========================================
+     SLIDE 11 — LLM & DOCKER
+     ========================================== -->
+<section class="slide" id="slide-11" aria-label="LLM et Docker">
+  <div class="term-bar">
+    <div class="term-dot td-r"></div><div class="term-dot td-y"></div><div class="term-dot td-g"></div>
+    <span class="term-title">theo@cloud-s2:~/CM2 — man llm-usage</span>
+    <span class="term-slide-num">11/14</span>
+  </div>
+
+  <div class="slide-content">
+    <h2 class="slide-heading reveal">
+      <span class="comment"># l'IA comme outil, pas comme béquille</span>
+      <span class="prompt-mark">$</span> LLMs &amp; Docker
+    </h2>
+
+    <div style="display:flex;gap:clamp(2rem,4vw,5rem);align-items:flex-start;">
+      <!-- Left: key concepts -->
+      <div style="flex:1;display:flex;flex-direction:column;gap:var(--gap-sm);">
+        <div class="reveal" style="background:var(--bg-2);border:1px solid var(--green-dim);border-radius:clamp(4px,.5vw,8px);padding:clamp(.6rem,1.5vh,1.5rem);">
+          <div style="font-size:var(--small-size);color:var(--green);font-weight:700;margin-bottom:clamp(4px,.6vh,8px);">Le LLM est un excellent exécutant</div>
+          <div style="font-size:var(--small-size);color:var(--text-muted);line-height:1.8;">Il génère du code syntaxiquement correct, applique des patterns connus, et produit ce qu'on lui demande — <span style="color:var(--text);">exactement ce qu'on lui demande.</span></div>
+        </div>
+        <div class="reveal" style="background:var(--bg-2);border:1px solid var(--red-dim, rgba(255,80,80,.3));border-radius:clamp(4px,.5vw,8px);padding:clamp(.6rem,1.5vh,1.5rem);">
+          <div style="font-size:var(--small-size);color:var(--red, #ff5555);font-weight:700;margin-bottom:clamp(4px,.6vh,8px);">Ce qu'il ne fait pas</div>
+          <div style="font-size:var(--small-size);color:var(--text-muted);line-height:1.8;">Comprendre <em>pourquoi</em> vous avez ce problème · Savoir si sa solution est sécurisée · Anticiper les conséquences en production</div>
+        </div>
+        <div class="reveal" style="background:var(--bg-2);border:1px solid var(--border);border-left:3px solid var(--blue);border-radius:0 clamp(4px,.5vw,6px) clamp(4px,.5vw,6px) 0;padding:clamp(.5rem,1.2vh,1.2rem) clamp(.6rem,1.2vw,1.2rem);">
+          <div style="font-size:var(--small-size);color:var(--text-muted);line-height:1.8;">
+            <span style="color:var(--blue);">Sans les bases</span> : vous ne savez pas ce que vous pouvez demander, et vous ne savez pas si le résultat est bon ou non.
+          </div>
+        </div>
+      </div>
+
+      <!-- Right: two examples preview -->
+      <div style="flex:1;display:flex;flex-direction:column;gap:var(--gap-sm);">
+        <div class="reveal" style="background:var(--bg-2);border:1px solid var(--border);border-radius:clamp(4px,.5vw,8px);padding:clamp(.6rem,1.5vh,1.5rem);">
+          <div style="font-size:var(--small-size);color:var(--orange);font-weight:700;margin-bottom:clamp(4px,.6vh,6px);">⚠ Exemple 1 — Résoudre le mauvais problème</div>
+          <div style="font-size:var(--small-size);color:var(--text-muted);line-height:1.7;">Conflit de version → LLM télécharge un binaire non signé depuis GitHub. Build réussi. Image vulnérable.</div>
+        </div>
+        <div class="reveal" style="background:var(--bg-2);border:1px solid var(--border);border-radius:clamp(4px,.5vw,8px);padding:clamp(.6rem,1.5vh,1.5rem);">
+          <div style="font-size:var(--small-size);color:var(--blue);font-weight:700;margin-bottom:clamp(4px,.6vh,6px);">✦ Exemple 2 — Savoir ce qu'on veut demander</div>
+          <div style="font-size:var(--small-size);color:var(--text-muted);line-height:1.7;">Prompt vague → résultat médiocre (1.2 Go, root). Prompt précis → multi-stage build, 180 Mo, non-privilégié.</div>
+        </div>
+        <div class="reveal" style="text-align:center;padding:clamp(.5rem,1vh,1rem);border:1px dashed var(--border);border-radius:clamp(4px,.5vw,8px);">
+          <span style="font-size:var(--small-size);color:var(--text-dim);font-style:italic;">C'est l'étudiant qui doit être l'architecte.</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ==========================================
+     SLIDE 12 — LLM PIÈGE N°1
+     ========================================== -->
+<section class="slide" id="slide-12" aria-label="LLM Piège 1">
+  <div class="term-bar">
+    <div class="term-dot td-r"></div><div class="term-dot td-y"></div><div class="term-dot td-g"></div>
+    <span class="term-title">theo@cloud-s2:~/myapp — docker build . # ça passe... vraiment ?</span>
+    <span class="term-slide-num">12/14</span>
+  </div>
+
+  <div class="slide-content">
+    <h2 class="slide-heading reveal">
+      <span class="comment"># quand le LLM résout le symptôme, pas la cause</span>
+      <span class="prompt-mark">$</span> Piège n°1 — La fausse solution
+    </h2>
+
+    <div style="display:flex;gap:clamp(2rem,4vw,5rem);align-items:flex-start;">
+      <!-- Left: bad prompt + bad solution -->
+      <div style="flex:1;display:flex;flex-direction:column;gap:var(--gap-sm);">
+        <div class="reveal" style="background:rgba(255,80,80,.06);border:1px solid rgba(255,80,80,.3);border-radius:clamp(4px,.5vw,6px);padding:clamp(.4rem,.8vh,.8rem) clamp(.6rem,1vw,1rem);">
+          <div style="font-size:var(--small-size);color:rgba(255,80,80,.7);font-weight:600;margin-bottom:2px;">Prompt étudiant</div>
+          <div style="font-size:var(--small-size);color:var(--text-muted);font-style:italic;">"Mon build échoue parce que libpq-dev est trop vieux, comment je corrige mon Dockerfile ?"</div>
+        </div>
+        <div class="code-block reveal">
+          <pre><span class="ln"> 1</span> <span class="kw">FROM</span> <span class="str">python:3.9-slim</span>
+<span class="ln"> 2</span> <span class="kw">RUN</span> apt-get update &amp;&amp; apt-get install -y \
+<span class="ln"> 3</span>     curl gnupg gcc \
+<span class="ln"> 4</span>  &amp;&amp; <span class="cmd">curl -fsSL github.com/jrg94/</span>
+<span class="ln"> 5</span>     <span class="cmd">libpq-backport/.../amd64.deb</span>
+<span class="ln"> 6</span>     <span class="cmd">-o libpq-dev.deb</span>
+<span class="ln"> 7</span>  &amp;&amp; <span class="cmd">dpkg -i libpq-dev.deb</span></pre>
+        </div>
+        <div class="reveal" style="background:rgba(255,80,80,.08);border:1px solid rgba(255,80,80,.3);border-radius:clamp(4px,.5vw,6px);padding:clamp(.5rem,1vh,1rem);">
+          <div style="font-size:var(--small-size);color:#ff5555;line-height:1.7;">
+            Build réussi. Tests passent. Image vulnérable.<br>
+            Binaire non signé · mainteneur inconnu · sans checksum
+          </div>
+        </div>
+      </div>
+
+      <!-- Right: what to understand + fix -->
+      <div style="flex:1;display:flex;flex-direction:column;gap:var(--gap-sm);">
+        <div class="reveal" style="background:rgba(57,211,83,.06);border:1px solid var(--green-dim);border-radius:clamp(4px,.5vw,6px);padding:clamp(.4rem,.8vh,.8rem) clamp(.6rem,1vw,1rem);">
+          <div style="font-size:var(--small-size);color:var(--green);font-weight:600;">Ce qu'un étudiant avec les bases aurait fait</div>
+        </div>
+        <div class="reveal" style="background:var(--bg-2);border:1px solid var(--border);border-radius:clamp(4px,.5vw,6px);padding:clamp(.5rem,1vh,1rem);">
+          <div style="font-size:var(--small-size);color:var(--text-muted);line-height:2;">
+            <span style="color:var(--blue);">1.</span> Les images <code>slim</code> suivent les releases Debian — les nouvelles embarquent des packages plus récents<br>
+            <span style="color:var(--blue);">2.</span> Package trop vieux → <em>"mon image de base est peut-être obsolète"</em><br>
+            <span style="color:var(--orange);">3.</span> Tout <code>RUN curl ... .deb &amp;&amp; dpkg -i</code> est un signal d'alarme
+          </div>
+        </div>
+        <div class="code-block reveal">
+          <pre><span class="ln"> 1</span> <span class="cmt"># Debian Bookworm → libpq 15 inclus</span>
+<span class="ln"> 2</span> <span class="kw">FROM</span> <span class="str">python:3.11-slim</span>  <span class="cmt"># un mot changé</span></pre>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ==========================================
+     SLIDE 13 — LLM PIÈGE N°2
+     ========================================== -->
+<section class="slide" id="slide-13" aria-label="LLM Piège 2">
+  <div class="term-bar">
+    <div class="term-dot td-r"></div><div class="term-dot td-y"></div><div class="term-dot td-g"></div>
+    <span class="term-title">theo@cloud-s2:~/myapp — docker images # 1.2G → 180M</span>
+    <span class="term-slide-num">13/14</span>
+  </div>
+
+  <div class="slide-content">
+    <h2 class="slide-heading reveal">
+      <span class="comment"># savoir ce qu'on veut pour obtenir ce qu'on mérite</span>
+      <span class="prompt-mark">$</span> Piège n°2 — "Améliore mon Dockerfile"
+    </h2>
+
+    <div style="display:flex;gap:clamp(2rem,4vw,5rem);align-items:flex-start;">
+      <!-- Left: original → vague prompt → mediocre result -->
+      <div style="flex:1;display:flex;flex-direction:column;gap:var(--gap-sm);">
+        <div class="reveal" style="font-size:var(--small-size);color:var(--text-muted);font-weight:600;">Dockerfile de départ — fonctionne, mais…</div>
+        <div class="code-block reveal">
+          <pre><span class="ln"> 1</span> <span class="kw">FROM</span> <span class="str">node:20</span>
+<span class="ln"> 2</span> <span class="kw">WORKDIR</span> /app
+<span class="ln"> 3</span> <span class="kw">COPY</span> . .
+<span class="ln"> 4</span> <span class="kw">RUN</span> npm install &amp;&amp; npm run build
+<span class="ln"> 5</span> <span class="kw">EXPOSE</span> <span class="val">3000</span>
+<span class="ln"> 6</span> <span class="kw">CMD</span> [<span class="str">"node"</span>, <span class="str">"dist/index.js"</span>]
+<span class="ln"> </span> <span class="cmt">→ 1.2 Go · tourne en root</span></pre>
+        </div>
+        <div class="reveal" style="background:rgba(255,80,80,.06);border:1px solid rgba(255,80,80,.3);border-radius:clamp(4px,.5vw,6px);padding:clamp(.4rem,.8vh,.8rem) clamp(.6rem,1vw,1rem);">
+          <div style="font-size:var(--small-size);color:rgba(255,80,80,.7);font-weight:600;margin-bottom:2px;">Prompt sans connaissances</div>
+          <div style="font-size:var(--small-size);color:var(--text-muted);font-style:italic;">"Améliore mon Dockerfile"</div>
+        </div>
+        <div class="code-block reveal">
+          <pre><span class="ln"> 1</span> <span class="kw">FROM</span> <span class="str">node:20</span>
+<span class="ln"> 2</span> <span class="kw">WORKDIR</span> /app
+<span class="ln"> 3</span> <span class="cmt"># Copy package files first for better caching</span>
+<span class="ln"> 4</span> <span class="kw">COPY</span> package*.json ./
+<span class="ln"> 5</span> <span class="kw">RUN</span> npm install
+<span class="ln"> 6</span> <span class="kw">COPY</span> . . &amp;&amp; <span class="kw">RUN</span> npm run build
+<span class="ln"> 7</span> <span class="kw">CMD</span> [<span class="str">"node"</span>, <span class="str">"dist/index.js"</span>]
+<span class="ln"> </span> <span class="cmt">→ toujours 1.2 Go · toujours root</span></pre>
+        </div>
+        <div class="reveal" style="background:rgba(255,80,80,.08);border:1px solid rgba(255,80,80,.3);border-radius:clamp(4px,.5vw,6px);padding:clamp(.5rem,1vh,1rem);">
+          <div style="font-size:var(--small-size);color:#ff5555;line-height:1.7;">
+            Quelques commentaires, une ligne bougée. Le LLM a fait ce qu'on lui a demandé.
+          </div>
+        </div>
+      </div>
+
+      <!-- Right: precise prompt + excellent result -->
+      <div style="flex:1;display:flex;flex-direction:column;gap:var(--gap-sm);">
+        <div class="reveal" style="background:rgba(57,211,83,.06);border:1px solid var(--green-dim);border-radius:clamp(4px,.5vw,6px);padding:clamp(.4rem,.8vh,.8rem) clamp(.6rem,1vw,1rem);">
+          <div style="font-size:var(--small-size);color:var(--green);font-weight:600;margin-bottom:2px;">Prompt avec les bases</div>
+          <div style="font-size:var(--small-size);color:var(--text-muted);font-style:italic;">"Multi-stage build : stage <code>builder</code> qui compile, stage final <code>node:20-alpine</code> avec dépendances de prod uniquement et utilisateur non-privilégié"</div>
+        </div>
+        <div class="code-block reveal">
+          <pre><span class="ln"> 1</span> <span class="kw">FROM</span> <span class="str">node:20</span> <span class="arg">AS builder</span>
+<span class="ln"> 2</span> <span class="kw">COPY</span> package*.json ./ &amp;&amp; <span class="kw">RUN</span> npm ci
+<span class="ln"> 3</span> <span class="kw">RUN</span> npm run build
+<span class="ln"> 4</span> <span class="cmt">─────────────────────────────</span>
+<span class="ln"> 5</span> <span class="kw">FROM</span> <span class="str">node:20-alpine</span>
+<span class="ln"> 6</span> <span class="kw">COPY</span> --from=builder /app/dist ./dist
+<span class="ln"> 7</span> <span class="kw">RUN</span> npm ci --omit=dev
+<span class="ln"> 8</span> <span class="kw">RUN</span> adduser -S appuser &amp;&amp; <span class="kw">USER</span> <span class="arg">appuser</span></pre>
+        </div>
+        <div class="reveal" style="background:rgba(57,211,83,.08);border:1px solid var(--green-dim);border-radius:clamp(4px,.5vw,6px);padding:clamp(.5rem,1vh,1rem);">
+          <div style="font-size:var(--small-size);color:var(--green);line-height:1.7;">
+            <strong>1.2 Go → 180 Mo</strong> · non-privilégié · production-ready<br>
+            <span style="color:var(--text-muted);">Le LLM est un excellent exécutant — c'est vous l'architecte.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ==========================================
+     SLIDE 14 — RESSOURCES
+     ========================================== -->
+<section class="slide" id="slide-14" aria-label="Ressources">
+  <div class="term-bar">
+    <div class="term-dot td-r"></div><div class="term-dot td-y"></div><div class="term-dot td-g"></div>
+    <span class="term-title">theo@cloud-s2:~/CM2 — cat RESSOURCES.md</span>
+    <span class="term-slide-num">14/14</span>
+  </div>
+
+  <div class="slide-content">
+    <h2 class="slide-heading reveal">
+      <span class="comment"># pour aller plus loin</span>
+      <span class="prompt-mark">$</span> Ressources
+    </h2>
+
+    <!-- Resources grid 2x2 -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--gap-sm);">
+      <a class="resource-item reveal" href="https://www.docker.com/get-started/" target="_blank" rel="noopener">
+        <span class="resource-icon">🐳</span>
+        <div style="flex:1;">
+          <span class="resource-url">docker.com/get-started</span>
+          <span class="resource-desc">Documentation officielle &amp; tutoriels interactifs</span>
+        </div>
+        <span class="resource-badge">officiel</span>
+      </a>
+      <a class="resource-item reveal" href="https://hub.docker.com" target="_blank" rel="noopener">
+        <span class="resource-icon">📦</span>
+        <div style="flex:1;">
+          <span class="resource-url">hub.docker.com</span>
+          <span class="resource-desc">Registry public — des milliers d'images prêtes</span>
+        </div>
+        <span class="resource-badge">registry</span>
+      </a>
+      <a class="resource-item reveal" href="https://www.openlegacy.com/blog/monolithic-application" target="_blank" rel="noopener">
+        <span class="resource-icon">📖</span>
+        <div style="flex:1;">
+          <span class="resource-url">openlegacy.com</span>
+          <span class="resource-desc">Architecture monolithique vs microservices</span>
+        </div>
+        <span class="resource-badge">article</span>
+      </a>
+      <a class="resource-item reveal" href="https://www.weave.works/blog/a-practical-guide-to-choosing-between-docker-containers-and-vms" target="_blank" rel="noopener">
+        <span class="resource-icon">⚖️</span>
+        <div style="flex:1;">
+          <span class="resource-url">weave.works — Containers vs VMs</span>
+          <span class="resource-desc">Guide pratique pour choisir entre containers et VMs</span>
+        </div>
+        <span class="resource-badge">guide</span>
+      </a>
+    </div>
+
+    <!-- Bottom bar: author + next step -->
+    <div class="reveal" style="display:flex;gap:var(--gap);margin-top:var(--gap);">
+      <div style="flex:1;background:var(--bg-2);border:1px solid var(--green-dim);border-radius:clamp(6px,.8vw,10px);padding:clamp(.75rem,2vh,1.5rem) clamp(.75rem,1.5vw,1.5rem);display:flex;align-items:center;gap:var(--gap);">
+        <span style="font-size:var(--small-size);color:var(--green);font-weight:700;">Theo Rey</span>
+        <span style="font-size:var(--small-size);color:var(--text-muted);">Site Reliability Engineer</span>
+        <span style="font-size:var(--small-size);color:var(--blue);">contact@reyth.dev</span>
+      </div>
+      <div style="flex:1;background:var(--bg-2);border:1px solid var(--border);border-radius:clamp(6px,.8vw,10px);padding:clamp(.75rem,2vh,1.5rem) clamp(.75rem,1.5vw,1.5rem);display:flex;align-items:center;gap:var(--gap);">
+        <span style="font-size:var(--small-size);color:var(--orange);font-weight:700;">Prochaine étape →</span>
+        <span style="font-size:var(--small-size);color:var(--text-muted);">TP : Introduction à Docker</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ==========================================
+     JAVASCRIPT — PRESENTATION CONTROLLER
+     ========================================== -->
+<script>
+/* ===========================================
+   SLIDE PRESENTATION CONTROLLER
+   Handles navigation, animations, progress, dots
+   =========================================== */
+class SlidePresentation {
+    constructor() {
+        this.slides       = document.querySelectorAll('.slide');
+        this.totalSlides  = this.slides.length;
+        this.currentIndex = 0;
+        this.isScrolling  = false;
+        this.touchStartY  = 0;
+
+        this.progressBar  = document.getElementById('progressBar');
+        this.navDotsEl    = document.getElementById('navDots');
+        this.keyboardHint = document.getElementById('keyboardHint');
+
+        this.setupIntersectionObserver();
+        this.setupKeyboardNav();
+        this.setupTouchNav();
+        this.setupWheelNav();
+        this.setupNavDots();
+        this.updateProgress(0);
+
+        // Hide keyboard hint after first interaction
+        let hintHidden = false;
+        const hideHint = () => {
+            if (!hintHidden) {
+                hintHidden = true;
+                this.keyboardHint.classList.add('hidden');
+            }
+        };
+        document.addEventListener('keydown', hideHint, { once: true });
+        document.addEventListener('wheel', hideHint, { once: true });
+        document.addEventListener('touchstart', hideHint, { once: true });
+    }
+
+    /* Trigger .visible on slides entering viewport */
+    setupIntersectionObserver() {
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('visible');
+                    const idx = Array.from(this.slides).indexOf(entry.target);
+                    this.currentIndex = idx;
+                    this.updateProgress(idx);
+                    this.updateNavDots(idx);
+                }
+            });
+        }, { threshold: 0.6 });
+
+        this.slides.forEach(slide => observer.observe(slide));
+    }
+
+    /* Keyboard: arrows, space, page up/down, home/end */
+    setupKeyboardNav() {
+        document.addEventListener('keydown', (e) => {
+            // Skip if editing text
+            if (e.target.getAttribute('contenteditable') === 'true') return;
+
+            switch (e.key) {
+                case 'ArrowDown':
+                case 'ArrowRight':
+                case ' ':
+                case 'PageDown':
+                    e.preventDefault();
+                    this.goTo(this.currentIndex + 1);
+                    break;
+                case 'ArrowUp':
+                case 'ArrowLeft':
+                case 'PageUp':
+                    e.preventDefault();
+                    this.goTo(this.currentIndex - 1);
+                    break;
+                case 'Home':
+                    e.preventDefault();
+                    this.goTo(0);
+                    break;
+                case 'End':
+                    e.preventDefault();
+                    this.goTo(this.totalSlides - 1);
+                    break;
+            }
+        });
+    }
+
+    /* Touch swipe up/down */
+    setupTouchNav() {
+        document.addEventListener('touchstart', (e) => {
+            this.touchStartY = e.touches[0].clientY;
+        }, { passive: true });
+
+        document.addEventListener('touchend', (e) => {
+            const delta = this.touchStartY - e.changedTouches[0].clientY;
+            if (Math.abs(delta) > 50) {
+                this.goTo(this.currentIndex + (delta > 0 ? 1 : -1));
+            }
+        }, { passive: true });
+    }
+
+    /* Mouse wheel navigation with throttle */
+    setupWheelNav() {
+        document.addEventListener('wheel', (e) => {
+            if (this.isScrolling) return;
+            this.isScrolling = true;
+            this.goTo(this.currentIndex + (e.deltaY > 0 ? 1 : -1));
+            setTimeout(() => { this.isScrolling = false; }, 800);
+        }, { passive: true });
+    }
+
+    /* Navigate to slide index */
+    goTo(index) {
+        const clamped = Math.max(0, Math.min(this.totalSlides - 1, index));
+        this.slides[clamped].scrollIntoView({ behavior: 'smooth' });
+    }
+
+    /* Update progress bar width */
+    updateProgress(index) {
+        const pct = this.totalSlides > 1
+            ? (index / (this.totalSlides - 1)) * 100
+            : 100;
+        this.progressBar.style.width = pct + '%';
+        this.progressBar.setAttribute('aria-valuenow', Math.round(pct));
+    }
+
+    /* Build and update nav dots */
+    setupNavDots() {
+        this.slides.forEach((_, i) => {
+            const btn = document.createElement('button');
+            btn.className = 'nav-dot' + (i === 0 ? ' active' : '');
+            btn.setAttribute('aria-label', `Aller à la diapositive ${i + 1}`);
+            btn.addEventListener('click', () => this.goTo(i));
+            this.navDotsEl.appendChild(btn);
+        });
+    }
+
+    updateNavDots(activeIndex) {
+        this.navDotsEl.querySelectorAll('.nav-dot').forEach((dot, i) => {
+            dot.classList.toggle('active', i === activeIndex);
+        });
+    }
+}
+
+
+/* ===========================================
+   INLINE EDITOR
+   Hotzone hover + E key toggle + localStorage save + export
+   =========================================== */
+class InlineEditor {
+    constructor() {
+        this.isActive   = false;
+        this.editToggle = document.getElementById('editToggle');
+        this.hotzone    = document.getElementById('editHotzone');
+        this.saveBtn    = document.getElementById('editSaveBtn');
+        this.hideTimeout = null;
+
+        // Elements that can be edited
+        this.editableSelectors = [
+            'h1', 'h2', 'h3', 'p', 'span', 'li', 'div',
+            '.agenda-text', '.adv-title', '.adv-desc',
+            '.main-title', '.output-line', '.slide-heading'
+        ].join(', ');
+
+        this.setupHotzone();
+        this.setupToggle();
+        this.setupKeyboard();
+        this.setupSaveButton();
+        this.loadFromStorage();
+    }
+
+    /* Hotzone hover — JS-based with 400ms grace period (not CSS ~ selector) */
+    setupHotzone() {
+        this.hotzone.addEventListener('mouseenter', () => {
+            clearTimeout(this.hideTimeout);
+            this.editToggle.classList.add('show');
+        });
+        this.hotzone.addEventListener('mouseleave', () => {
+            this.hideTimeout = setTimeout(() => {
+                if (!this.isActive) this.editToggle.classList.remove('show');
+            }, 400);
+        });
+        this.editToggle.addEventListener('mouseenter', () => {
+            clearTimeout(this.hideTimeout);
+        });
+        this.editToggle.addEventListener('mouseleave', () => {
+            this.hideTimeout = setTimeout(() => {
+                if (!this.isActive) this.editToggle.classList.remove('show');
+            }, 400);
+        });
+        this.hotzone.addEventListener('click', () => this.toggleEditMode());
+    }
+
+    setupToggle() {
+        this.editToggle.addEventListener('click', () => this.toggleEditMode());
+    }
+
+    /* E key shortcut */
+    setupKeyboard() {
+        document.addEventListener('keydown', (e) => {
+            if ((e.key === 'e' || e.key === 'E') && !e.target.getAttribute('contenteditable')) {
+                this.toggleEditMode();
+            }
+            // Ctrl+S saves in edit mode
+            if (e.ctrlKey && e.key === 's' && this.isActive) {
+                e.preventDefault();
+                this.saveToStorage();
+                this.showSavedFeedback();
+            }
+        });
+    }
+
+    setupSaveButton() {
+        this.saveBtn.addEventListener('click', () => {
+            this.saveToStorage();
+            this.exportHTML();
+        });
+    }
+
+    toggleEditMode() {
+        this.isActive = !this.isActive;
+        document.body.classList.toggle('edit-mode', this.isActive);
+        this.editToggle.classList.toggle('active', this.isActive);
+        this.editToggle.classList.add('show');
+        this.editToggle.textContent = this.isActive ? '✓ terminer' : '✏ éditer';
+
+        if (this.isActive) {
+            this.makeEditable(true);
+        } else {
+            this.makeEditable(false);
+            this.saveToStorage();
+        }
+    }
+
+    makeEditable(on) {
+        // Only make leaf text nodes editable to avoid breaking structure
+        const safe = ['H1','H2','H3','P','SPAN','LI'];
+        document.querySelectorAll('.slide *').forEach(el => {
+            if (safe.includes(el.tagName) && !el.querySelector(safe.map(t => t.toLowerCase()).join(','))) {
+                el.setAttribute('contenteditable', on ? 'true' : 'false');
+            }
+        });
+    }
+
+    saveToStorage() {
+        try {
+            localStorage.setItem('cm2_docker_slides', document.body.innerHTML);
+        } catch(e) { /* storage full */ }
+    }
+
+    loadFromStorage() {
+        // Only restore if we have a saved version
+        // Disabled by default to always show fresh content
+        // Uncomment to enable:
+        // const saved = localStorage.getItem('cm2_docker_slides');
+        // if (saved) document.body.innerHTML = saved;
+    }
+
+    showSavedFeedback() {
+        const orig = this.editToggle.textContent;
+        this.editToggle.textContent = '✓ sauvegardé';
+        setTimeout(() => { this.editToggle.textContent = orig; }, 1500);
+    }
+
+    exportHTML() {
+        const blob = new Blob([`<!DOCTYPE html>\n` + document.documentElement.outerHTML], { type: 'text/html' });
+        const url  = URL.createObjectURL(blob);
+        const a    = document.createElement('a');
+        a.href = url; a.download = 'CM2_Docker_export.html';
+        a.click();
+        URL.revokeObjectURL(url);
+    }
+}
+
+// Init
+const presentation = new SlidePresentation();
+
+// Agenda item click → navigate to target slide
+document.querySelectorAll('.agenda-item[data-target]').forEach(item => {
+    const handler = () => {
+        const target = document.getElementById(item.dataset.target);
+        if (target) target.scrollIntoView({ behavior: 'smooth' });
+    };
+    item.addEventListener('click', handler);
+    item.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') handler(); });
+});
+const editor       = new InlineEditor();
+</script>
+
+</body>
+</html>
